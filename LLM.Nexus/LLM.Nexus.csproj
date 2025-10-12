@@ -5,7 +5,6 @@
         <LangVersion>latest</LangVersion>
         <Nullable>enable</Nullable>
 
-        <!-- Package Metadata -->
         <PackageId>LLM.Nexus</PackageId>
         <Version>1.0.1</Version>
         <Authors>Alexandros Mouratidis</Authors>
