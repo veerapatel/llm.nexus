@@ -14,8 +14,8 @@
         <Description>A unified abstraction layer for multiple LLM providers (OpenAI, Anthropic) with support for dependency injection, rich response metadata, and extensible architecture.</Description>
         <PackageTags>LLM;AI;OpenAI;Anthropic;Claude;GPT;ChatGPT;NLP;Machine-Learning</PackageTags>
         
-        <PackageProjectUrl>https://github.com/yourusername/llm.nexus</PackageProjectUrl>
-        <RepositoryUrl>https://github.com/yourusername/llm.nexus</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/Mouratid/llm.nexus</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/Mouratid/llm.nexus</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         
