@@ -6,20 +6,19 @@ using Google.Cloud.AIPlatform.V1;
 using LLM.Nexus.Models;
 using LLM.Nexus.Settings;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace LLM.Nexus.Providers.Google
 {
     internal class GoogleService : IGoogleService
     {
         private readonly ILogger<GoogleService> _logger;
-        private readonly LLMSettings _settings;
+        private readonly ProviderConfiguration _config;
         private readonly PredictionServiceClient _client;
 
-        public GoogleService(ILogger<GoogleService> logger, IOptions<LLMSettings> settings)
+        public GoogleService(ILogger<GoogleService> logger, ProviderConfiguration config)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _settings = settings?.Value ?? throw new ArgumentNullException(nameof(settings));
+            _config = config ?? throw new ArgumentNullException(nameof(config));
 
             // Initialize client once and reuse it
             _client = PredictionServiceClient.Create();
@@ -46,7 +45,7 @@ namespace LLM.Nexus.Providers.Google
 
                 var generateContentRequest = new GenerateContentRequest
                 {
-                    Model = _settings.Model,
+                    Model = _config.Model,
                     Contents = { content }
                 };
 
@@ -87,7 +86,7 @@ namespace LLM.Nexus.Providers.Google
                 {
                     Content = responseText,
                     Id = Guid.NewGuid().ToString(), // Google doesn't provide a unique ID in the response
-                    Model = _settings.Model,
+                    Model = _config.Model,
                     Provider = "Google",
                     Timestamp = DateTimeOffset.UtcNow,
                     FinishReason = apiResponse.Candidates.Count > 0

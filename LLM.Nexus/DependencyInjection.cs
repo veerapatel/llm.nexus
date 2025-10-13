@@ -1,6 +1,3 @@
-using LLM.Nexus.Providers.Anthropic;
-using LLM.Nexus.Providers.Google;
-using LLM.Nexus.Providers.OpenAI;
 using LLM.Nexus.Settings;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -13,6 +10,7 @@ namespace LLM.Nexus
     {
         /// <summary>
         /// Adds LLM services to the specified <see cref="IServiceCollection"/>.
+        /// Registers the LLM service factory that supports multiple provider configurations.
         /// </summary>
         /// <param name="services">The service collection to add services to.</param>
         /// <returns>The service collection for chaining.</returns>
@@ -23,9 +21,6 @@ namespace LLM.Nexus
                         .ValidateDataAnnotations()
                         .ValidateOnStart();
 
-            services.AddSingleton<IAnthropicService, AnthropicService>();
-            services.AddSingleton<IOpenAIService, OpenAIService>();
-            services.AddSingleton<IGoogleService, GoogleService>();
             services.AddSingleton<ILLMServiceFactory, LLMServiceFactory>();
 
             return services;

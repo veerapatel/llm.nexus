@@ -8,24 +8,23 @@ using Anthropic.SDK.Messaging;
 using LLM.Nexus.Models;
 using LLM.Nexus.Settings;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace LLM.Nexus.Providers.Anthropic
 {
     internal class AnthropicService : IAnthropicService, IDisposable
     {
-        private readonly LLMSettings _settings;
+        private readonly ProviderConfiguration _config;
         private readonly ILogger<AnthropicService> _logger;
         private readonly AnthropicClient _client;
         private bool _disposed;
 
-        public AnthropicService(ILogger<AnthropicService> logger, IOptions<LLMSettings> settings)
+        public AnthropicService(ILogger<AnthropicService> logger, ProviderConfiguration config)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _settings = settings?.Value ?? throw new ArgumentNullException(nameof(settings));
+            _config = config ?? throw new ArgumentNullException(nameof(config));
 
             // Initialize client once and reuse it
-            _client = new AnthropicClient(_settings.ApiKey);
+            _client = new AnthropicClient(_config.ApiKey);
         }
 
         public async Task<LLMResponse> GenerateResponseAsync(LLMRequest request, CancellationToken cancellationToken = default)
@@ -48,9 +47,9 @@ namespace LLM.Nexus.Providers.Anthropic
                 var parameters = new MessageParameters()
                 {
                     Messages = messages,
-                    Model = _settings.Model,
-                    MaxTokens = request.MaxTokens ?? _settings.MaxTokens ?? 2000,
-                    Stream = _settings.Stream
+                    Model = _config.Model,
+                    MaxTokens = request.MaxTokens ?? _config.MaxTokens ?? 2000,
+                    Stream = _config.Stream
                 };
 
                 if (!string.IsNullOrWhiteSpace(request.SystemMessage))

@@ -15,14 +15,20 @@ namespace LLM.Nexus.Tests.Settings
         }
 
         [Fact]
-        public void LLMSettings_WithAllRequiredFields_PassesValidation()
+        public void LLMSettings_WithSingleProvider_PassesValidation()
         {
             // Arrange
             var settings = new LLMSettings
             {
-                Provider = LLMProvider.OpenAI,
-                ApiKey = "test-api-key",
-                Model = "gpt-4"
+                Providers = new Dictionary<string, ProviderConfiguration>
+                {
+                    ["default"] = new ProviderConfiguration
+                    {
+                        Provider = LLMProvider.OpenAI,
+                        ApiKey = "test-api-key",
+                        Model = "gpt-4"
+                    }
+                }
             };
 
             // Act
@@ -36,13 +42,27 @@ namespace LLM.Nexus.Tests.Settings
         }
 
         [Fact]
-        public void LLMSettings_WithMissingProvider_FailsValidation()
+        public void LLMSettings_WithMultipleProviders_PassesValidation()
         {
             // Arrange
             var settings = new LLMSettings
             {
-                ApiKey = "test-api-key",
-                Model = "gpt-4"
+                DefaultProvider = "openai",
+                Providers = new Dictionary<string, ProviderConfiguration>
+                {
+                    ["openai"] = new ProviderConfiguration
+                    {
+                        Provider = LLMProvider.OpenAI,
+                        ApiKey = "openai-key",
+                        Model = "gpt-4"
+                    },
+                    ["anthropic"] = new ProviderConfiguration
+                    {
+                        Provider = LLMProvider.Anthropic,
+                        ApiKey = "anthropic-key",
+                        Model = "claude-sonnet-4-5-20250929"
+                    }
+                }
             };
 
             // Act
@@ -50,18 +70,18 @@ namespace LLM.Nexus.Tests.Settings
             var validationResults = new List<ValidationResult>();
             var isValid = Validator.TryValidateObject(settings, validationContext, validationResults, true);
 
-            // Assert - Provider is an enum so it will have a default value, won't fail
+            // Assert
             isValid.Should().BeTrue();
+            validationResults.Should().BeEmpty();
         }
 
         [Fact]
-        public void LLMSettings_WithMissingApiKey_FailsValidation()
+        public void LLMSettings_WithEmptyProviders_FailsValidation()
         {
             // Arrange
             var settings = new LLMSettings
             {
-                Provider = LLMProvider.OpenAI,
-                Model = "gpt-4"
+                Providers = new Dictionary<string, ProviderConfiguration>()
             };
 
             // Act
@@ -71,63 +91,61 @@ namespace LLM.Nexus.Tests.Settings
 
             // Assert
             isValid.Should().BeFalse();
-            validationResults.Should().ContainSingle();
+            validationResults.Should().NotBeEmpty();
         }
 
         [Fact]
-        public void LLMSettings_WithMissingModel_FailsValidation()
+        public void LLMSettings_DefaultProvider_CanBeEmpty()
         {
-            // Arrange
+            // Arrange & Act
             var settings = new LLMSettings
             {
-                Provider = LLMProvider.OpenAI,
-                ApiKey = "test-api-key"
+                Providers = new Dictionary<string, ProviderConfiguration>
+                {
+                    ["default"] = new ProviderConfiguration
+                    {
+                        Provider = LLMProvider.OpenAI,
+                        ApiKey = "test-key",
+                        Model = "gpt-4"
+                    }
+                }
             };
 
-            // Act
-            var validationContext = new ValidationContext(settings);
-            var validationResults = new List<ValidationResult>();
-            var isValid = Validator.TryValidateObject(settings, validationContext, validationResults, true);
-
             // Assert
-            isValid.Should().BeFalse();
-            validationResults.Should().ContainSingle();
+            settings.DefaultProvider.Should().BeEmpty();
         }
 
         [Fact]
-        public void MaxTokens_DefaultsTo2000()
+        public void LLMSettings_DefaultProvider_CanBeSet()
+        {
+            // Arrange & Act
+            var settings = new LLMSettings
+            {
+                DefaultProvider = "openai",
+                Providers = new Dictionary<string, ProviderConfiguration>
+                {
+                    ["openai"] = new ProviderConfiguration
+                    {
+                        Provider = LLMProvider.OpenAI,
+                        ApiKey = "test-key",
+                        Model = "gpt-4"
+                    }
+                }
+            };
+
+            // Assert
+            settings.DefaultProvider.Should().Be("openai");
+        }
+
+        [Fact]
+        public void LLMSettings_ProvidersCollection_IsInitialized()
         {
             // Arrange & Act
             var settings = new LLMSettings();
 
             // Assert
-            settings.MaxTokens.Should().Be(2000);
-        }
-
-        [Fact]
-        public void MaxTokens_CanBeSetToCustomValue()
-        {
-            // Arrange & Act
-            var settings = new LLMSettings
-            {
-                MaxTokens = 5000
-            };
-
-            // Assert
-            settings.MaxTokens.Should().Be(5000);
-        }
-
-        [Fact]
-        public void Stream_CanBeSet()
-        {
-            // Arrange & Act
-            var settings = new LLMSettings
-            {
-                Stream = true
-            };
-
-            // Assert
-            settings.Stream.Should().BeTrue();
+            settings.Providers.Should().NotBeNull();
+            settings.Providers.Should().BeEmpty();
         }
     }
 }

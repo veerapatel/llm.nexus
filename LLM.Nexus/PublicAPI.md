@@ -121,23 +121,19 @@ Console.WriteLine(response.Content);
 
 **Namespace:** `LLM.Nexus`
 
-**Description:** Factory for creating LLM service instances based on configuration.
+**Description:** Factory for creating LLM service instances based on configuration. Supports multiple named provider configurations in the same application.
 
 #### Methods
 
 ##### CreateService()
 
-Creates an LLM service instance based on the configured provider.
+Creates an LLM service instance for the default provider. Uses the configured DefaultProvider or the first configured provider if not specified.
 
 ```csharp
 ILLMService CreateService()
 ```
 
-**Returns:** `ILLMService` - An instance of `ILLMService` for the configured provider.
-
-**Exceptions:**
-- `InvalidOperationException`: When the configured provider is not supported.
-- `ArgumentException`: When configuration is invalid.
+**Returns:** `ILLMService` - An instance of `ILLMService` for the default provider.
 
 **Example:**
 ```csharp
@@ -150,6 +146,78 @@ public class MyService
         _llmService = factory.CreateService();
     }
 }
+```
+
+##### CreateService(string providerName)
+
+Creates an LLM service instance for a specific named provider.
+
+```csharp
+ILLMService CreateService(string providerName)
+```
+
+**Parameters:**
+- `providerName` (`string`): The name of the provider configuration to use.
+
+**Returns:** `ILLMService` - An instance of `ILLMService` for the specified provider.
+
+**Exceptions:**
+- `ArgumentException`: Thrown when the provider name is null, empty, or not found in configuration.
+
+**Example:**
+```csharp
+public class MultiProviderService
+{
+    private readonly ILLMService _openAI;
+    private readonly ILLMService _anthropic;
+
+    public MultiProviderService(ILLMServiceFactory factory)
+    {
+        _openAI = factory.CreateService("openai-gpt4");
+        _anthropic = factory.CreateService("anthropic-claude");
+    }
+
+    public async Task<string> CompareResponses(string prompt)
+    {
+        var openAIResponse = await _openAI.GenerateResponseAsync(prompt);
+        var anthropicResponse = await _anthropic.GenerateResponseAsync(prompt);
+        return $"OpenAI: {openAIResponse.Content}\n\nAnthropic: {anthropicResponse.Content}";
+    }
+}
+```
+
+##### GetConfiguredProviders()
+
+Gets all configured provider names.
+
+```csharp
+IEnumerable<string> GetConfiguredProviders()
+```
+
+**Returns:** `IEnumerable<string>` - A collection of configured provider names.
+
+**Example:**
+```csharp
+var factory = serviceProvider.GetRequiredService<ILLMServiceFactory>();
+var providers = factory.GetConfiguredProviders();
+Console.WriteLine($"Available providers: {string.Join(", ", providers)}");
+```
+
+##### GetDefaultProviderName()
+
+Gets the name of the default provider.
+
+```csharp
+string GetDefaultProviderName()
+```
+
+**Returns:** `string` - The name of the default provider, or the first configured provider if no default is set.
+
+**Example:**
+```csharp
+var factory = serviceProvider.GetRequiredService<ILLMServiceFactory>();
+var defaultProvider = factory.GetDefaultProviderName();
+Console.WriteLine($"Default provider: {defaultProvider}");
 ```
 
 ---
@@ -280,17 +348,14 @@ Console.WriteLine($"Estimated Cost: ${cost:F4}");
 
 **Namespace:** `LLM.Nexus.Settings`
 
-**Description:** Configuration settings for LLM providers with validation attributes.
+**Description:** Configuration settings for LLM providers. Supports multiple named provider configurations in the same application.
 
 #### Properties
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `Provider` | `LLMProvider` | Yes | - | The LLM provider to use |
-| `ApiKey` | `string` | Yes | - | API key for authentication |
-| `Model` | `string` | Yes | - | Model identifier |
-| `MaxTokens` | `int?` | No | 2000 | Maximum tokens to generate |
-| `Stream` | `bool?` | No | `null` | Enable streaming responses (future) |
+| `Providers` | `Dictionary<string, ProviderConfiguration>` | Yes | - | Multiple named provider configurations |
+| `DefaultProvider` | `string` | No | - | Name of the default provider (uses first if not set) |
 
 #### Constants
 
@@ -300,13 +365,47 @@ Console.WriteLine($"Estimated Cost: ${cost:F4}");
 
 #### Configuration Example (appsettings.json)
 
+**Single Provider:**
 ```json
 {
   "LLMSettings": {
-    "Provider": "OpenAI",
-    "ApiKey": "sk-...",
-    "Model": "gpt-4",
-    "MaxTokens": 2000
+    "Providers": {
+      "default": {
+        "Provider": "OpenAI",
+        "ApiKey": "sk-...",
+        "Model": "gpt-4",
+        "MaxTokens": 2000
+      }
+    }
+  }
+}
+```
+
+**Multiple Providers:**
+```json
+{
+  "LLMSettings": {
+    "DefaultProvider": "openai-gpt4",
+    "Providers": {
+      "openai-gpt4": {
+        "Provider": "OpenAI",
+        "ApiKey": "sk-...",
+        "Model": "gpt-4",
+        "MaxTokens": 2000
+      },
+      "anthropic-claude": {
+        "Provider": "Anthropic",
+        "ApiKey": "sk-ant-...",
+        "Model": "claude-sonnet-4-5-20250929",
+        "MaxTokens": 4000
+      },
+      "google-gemini": {
+        "Provider": "Google",
+        "ApiKey": "...",
+        "Model": "gemini-2.0-flash",
+        "MaxTokens": 8000
+      }
+    }
   }
 }
 ```
@@ -322,10 +421,40 @@ public class MyService
     public MyService(IOptions<LLMSettings> options)
     {
         _settings = options.Value;
-        Console.WriteLine($"Using provider: {_settings.Provider}");
-        Console.WriteLine($"Using model: {_settings.Model}");
+        Console.WriteLine($"Configured providers: {string.Join(", ", _settings.Providers.Keys)}");
+        Console.WriteLine($"Default provider: {_settings.DefaultProvider}");
     }
 }
+```
+
+---
+
+### ProviderConfiguration
+
+**Namespace:** `LLM.Nexus.Settings`
+
+**Description:** Configuration for a specific LLM provider instance.
+
+#### Properties
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `Provider` | `LLMProvider` | Yes | - | The LLM provider type |
+| `ApiKey` | `string` | Yes | - | API key for authentication |
+| `Model` | `string` | Yes | - | Model identifier |
+| `MaxTokens` | `int?` | No | 2000 | Maximum tokens to generate |
+| `Stream` | `bool?` | No | `null` | Enable streaming responses (future) |
+
+#### Example
+
+```csharp
+var config = new ProviderConfiguration
+{
+    Provider = LLMProvider.OpenAI,
+    ApiKey = "sk-...",
+    Model = "gpt-4",
+    MaxTokens = 2000
+};
 ```
 
 ---
@@ -342,11 +471,12 @@ public class MyService
 |-------|-------------|
 | `OpenAI` | OpenAI provider (GPT models) |
 | `Anthropic` | Anthropic provider (Claude models) |
+| `Google` | Google provider (Gemini models) |
 
 #### Example
 
 ```csharp
-var settings = new LLMSettings
+var config = new ProviderConfiguration
 {
     Provider = LLMProvider.OpenAI,
     ApiKey = "sk-...",
@@ -386,14 +516,13 @@ public static IServiceCollection AddLLMServices(
 | Service Type | Implementation | Lifetime | Description |
 |-------------|----------------|----------|-------------|
 | `ILLMServiceFactory` | `LLMServiceFactory` | Singleton | Factory for creating LLM services |
-| `IAnthropicService` | `AnthropicService` | Singleton | Anthropic provider implementation |
-| `IOpenAIService` | `OpenAIService` | Singleton | OpenAI provider implementation |
 | `IOptions<LLMSettings>` | - | Singleton | Configuration options |
 
 **Configuration Binding:**
 - Binds `LLMSettings` from the `"LLMSettings"` configuration section
 - Validates data annotations on startup
 - Throws on invalid configuration
+- Supports multiple provider configurations
 
 **Example:**
 
@@ -412,13 +541,14 @@ var app = builder.Build();
 **Usage in Services:**
 
 ```csharp
+// Single provider usage
 public class MyService
 {
     private readonly ILLMService _llmService;
 
     public MyService(ILLMServiceFactory factory)
     {
-        // Factory automatically selects the configured provider
+        // Factory automatically selects the default provider
         _llmService = factory.CreateService();
     }
 
@@ -426,6 +556,36 @@ public class MyService
     {
         var response = await _llmService.GenerateResponseAsync(input);
         return response.Content;
+    }
+}
+
+// Multi-provider usage
+public class MultiProviderService
+{
+    private readonly ILLMService _openAI;
+    private readonly ILLMService _anthropic;
+    private readonly ILLMService _google;
+
+    public MultiProviderService(ILLMServiceFactory factory)
+    {
+        _openAI = factory.CreateService("openai-gpt4");
+        _anthropic = factory.CreateService("anthropic-claude");
+        _google = factory.CreateService("google-gemini");
+    }
+
+    public async Task<string> GetBestResponse(string input)
+    {
+        // Call multiple providers and compare results
+        var tasks = new[]
+        {
+            _openAI.GenerateResponseAsync(input),
+            _anthropic.GenerateResponseAsync(input),
+            _google.GenerateResponseAsync(input)
+        };
+
+        var responses = await Task.WhenAll(tasks);
+        // ... logic to select best response
+        return responses[0].Content;
     }
 }
 ```
@@ -475,6 +635,7 @@ builder.Services.AddLLMServices();
 | `LLMResponse` | Class | `LLM.Nexus.Models` | Public |
 | `UsageInfo` | Class | `LLM.Nexus.Models` | Public |
 | `LLMSettings` | Class | `LLM.Nexus.Settings` | Public |
+| `ProviderConfiguration` | Class | `LLM.Nexus.Settings` | Public |
 | `LLMProvider` | Enum | `LLM.Nexus.Settings` | Public |
 | `DependencyInjection` | Static Class | `LLM.Nexus` | Public |
 
@@ -493,6 +654,7 @@ LLM.Nexus.Models
 
 LLM.Nexus.Settings
 ├── LLMSettings
+├── ProviderConfiguration
 └── LLMProvider (enum)
 ```
 
@@ -516,10 +678,27 @@ var builder = Host.CreateApplicationBuilder(args);
 /*
 {
   "LLMSettings": {
-    "Provider": "OpenAI",
-    "ApiKey": "sk-...",
-    "Model": "gpt-4",
-    "MaxTokens": 2000
+    "DefaultProvider": "openai-gpt4",
+    "Providers": {
+      "openai-gpt4": {
+        "Provider": "OpenAI",
+        "ApiKey": "sk-...",
+        "Model": "gpt-4",
+        "MaxTokens": 2000
+      },
+      "anthropic-claude": {
+        "Provider": "Anthropic",
+        "ApiKey": "sk-ant-...",
+        "Model": "claude-sonnet-4-5-20250929",
+        "MaxTokens": 4000
+      },
+      "google-gemini": {
+        "Provider": "Google",
+        "ApiKey": "...",
+        "Model": "gemini-2.0-flash",
+        "MaxTokens": 8000
+      }
+    }
   }
 }
 */
@@ -533,13 +712,14 @@ var app = builder.Build();
 // 3. Use the Services
 var assistant = app.Services.GetRequiredService<AIAssistant>();
 
-// Simple usage
+// Simple usage with default provider
 var simpleResponse = await assistant.AskSimpleQuestionAsync("What is AI?");
 Console.WriteLine($"Simple: {simpleResponse}");
 
-// Advanced usage with full request
+// Advanced usage with specific provider
 var advancedResponse = await assistant.AskAdvancedQuestionAsync(
     "Write a haiku about programming",
+    providerName: "anthropic-claude",
     systemMessage: "You are a creative poet",
     temperature: 0.9
 );
@@ -547,28 +727,41 @@ var advancedResponse = await assistant.AskAdvancedQuestionAsync(
 Console.WriteLine($"Advanced: {advancedResponse.Content}");
 Console.WriteLine($"Tokens: {advancedResponse.Usage.TotalTokens}");
 Console.WriteLine($"Model: {advancedResponse.Model}");
+Console.WriteLine($"Provider: {advancedResponse.Provider}");
+
+// Multi-provider comparison
+var comparison = await assistant.CompareProvidersAsync("Explain quantum computing");
+Console.WriteLine(comparison);
 
 // Service Implementation
 public class AIAssistant
 {
-    private readonly ILLMService _llmService;
+    private readonly ILLMServiceFactory _factory;
 
     public AIAssistant(ILLMServiceFactory factory)
     {
-        _llmService = factory.CreateService();
+        _factory = factory;
     }
 
     public async Task<string> AskSimpleQuestionAsync(string question)
     {
-        var response = await _llmService.GenerateResponseAsync(question);
+        // Uses default provider
+        var service = _factory.CreateService();
+        var response = await service.GenerateResponseAsync(question);
         return response.Content;
     }
 
     public async Task<LLMResponse> AskAdvancedQuestionAsync(
         string question,
+        string providerName = null,
         string systemMessage = null,
         double? temperature = null)
     {
+        // Use specific provider or default
+        var service = string.IsNullOrEmpty(providerName)
+            ? _factory.CreateService()
+            : _factory.CreateService(providerName);
+
         var request = new LLMRequest
         {
             Prompt = question,
@@ -577,7 +770,22 @@ public class AIAssistant
             MaxTokens = 500
         };
 
-        return await _llmService.GenerateResponseAsync(request);
+        return await service.GenerateResponseAsync(request);
+    }
+
+    public async Task<string> CompareProvidersAsync(string question)
+    {
+        var providers = _factory.GetConfiguredProviders();
+        var results = new List<string>();
+
+        foreach (var providerName in providers)
+        {
+            var service = _factory.CreateService(providerName);
+            var response = await service.GenerateResponseAsync(question);
+            results.Add($"{response.Provider}: {response.Content}");
+        }
+
+        return string.Join("\n\n---\n\n", results);
     }
 }
 ```
@@ -586,17 +794,46 @@ public class AIAssistant
 
 ## Version History
 
-### Version 1.0.0
+### Version 2.0.0
 
-**Initial Release**
+**Major Release - Multi-Provider Support**
 
-- Core interfaces: `ILLMService`, `ILLMServiceFactory`
-- Request/Response models with validation
-- OpenAI and Anthropic provider support
-- Dependency injection integration
-- Configuration with data annotations
-- Comprehensive error handling
-- 100% test coverage
+- **BREAKING CHANGE**: Configuration schema updated to support multiple providers
+- Multi-provider architecture allows simultaneous use of multiple LLM providers
+- Enhanced `ILLMServiceFactory` with provider selection methods
+- New `ProviderConfiguration` class for individual provider settings
+- Support for default provider specification
+- Google (Gemini) provider support added
+- Updated documentation and examples
+- Simplified dependency injection registration
+
+**Migration Guide:**
+
+Old configuration (v1.x):
+```json
+{
+  "LLMSettings": {
+    "Provider": "OpenAI",
+    "ApiKey": "sk-...",
+    "Model": "gpt-4"
+  }
+}
+```
+
+New configuration (v2.0):
+```json
+{
+  "LLMSettings": {
+    "Providers": {
+      "default": {
+        "Provider": "OpenAI",
+        "ApiKey": "sk-...",
+        "Model": "gpt-4"
+      }
+    }
+  }
+}
+```
 
 ---
 

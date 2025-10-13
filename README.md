@@ -2,14 +2,16 @@
 
 [![NuGet](https://img.shields.io/nuget/v/LLM.Nexus.svg)](https://www.nuget.org/packages/LLM.Nexus)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-59%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-65%20passed-brightgreen.svg)]()
 [![.NET Standard](https://img.shields.io/badge/.NET%20Standard-2.0-blue.svg)]()
 
-A unified .NET abstraction layer for multiple Large Language Model (LLM) providers. LLM.Nexus simplifies integration with OpenAI, Anthropic, and other LLM services through a common interface, making it easy to switch between providers or support multiple providers in your application.
+A unified .NET abstraction layer for multiple Large Language Model (LLM) providers. LLM.Nexus simplifies integration with OpenAI, Anthropic, Google, and other LLM services through a common interface, making it easy to switch between providers or support multiple providers in your application simultaneously.
 
 ## Features
 
-- **Multi-Provider Support** - OpenAI (GPT) and Anthropic (Claude) with extensible architecture
+- **Multi-Provider Support** - OpenAI (GPT), Anthropic (Claude), and Google (Gemini) with extensible architecture
+- **Multiple Providers Simultaneously** - Configure and use multiple providers in the same application
+- **Named Provider Instances** - Create and manage multiple configurations for different use cases
 - **Unified Interface** - Single `ILLMService` interface works across all providers
 - **Rich Response Metadata** - Access token usage, model information, finish reasons, and more
 - **Dependency Injection** - First-class support for Microsoft.Extensions.DependencyInjection
@@ -17,7 +19,7 @@ A unified .NET abstraction layer for multiple Large Language Model (LLM) provide
 - **Cancellation Support** - All async methods support cancellation tokens
 - **Input Validation** - Built-in request validation with DataAnnotations
 - **Comprehensive Logging** - Structured logging throughout the library
-- **100% Test Coverage** - 59 passing tests covering all scenarios
+- **100% Test Coverage** - 65 passing tests covering all scenarios
 - **.NET Standard 2.0** - Compatible with .NET Framework 4.6.1+ and .NET Core 2.0+
 
 ## Installation
@@ -34,8 +36,11 @@ dotnet add package LLM.Nexus
   - [Service Factory](#service-factory)
   - [Request and Response Models](#request-and-response-models)
 - [Configuration](#configuration)
+  - [Single Provider Configuration](#single-provider-configuration)
+  - [Multi-Provider Configuration](#multi-provider-configuration)
   - [OpenAI Configuration](#openai-configuration)
   - [Anthropic Configuration](#anthropic-configuration)
+  - [Google Configuration](#google-configuration)
 - [Usage Examples](#usage-examples)
   - [Simple Usage](#simple-usage)
   - [Advanced Usage with LLMRequest](#advanced-usage-with-llmrequest)
@@ -56,28 +61,49 @@ dotnet add package LLM.Nexus
 
 Add LLM settings to your `appsettings.json`:
 
-**For OpenAI:**
+**Single Provider (Simple):**
 
 ```json
 {
   "LLMSettings": {
-    "Provider": "OpenAI",
-    "ApiKey": "your-api-key-here",
-    "Model": "gpt-4",
-    "MaxTokens": 2000
+    "Providers": {
+      "default": {
+        "Provider": "OpenAI",
+        "ApiKey": "your-api-key-here",
+        "Model": "gpt-4",
+        "MaxTokens": 2000
+      }
+    }
   }
 }
 ```
 
-**For Anthropic:**
+**Multiple Providers (Advanced):**
 
 ```json
 {
   "LLMSettings": {
-    "Provider": "Anthropic",
-    "ApiKey": "your-api-key-here",
-    "Model": "claude-sonnet-4-5-20250929",
-    "MaxTokens": 2000
+    "DefaultProvider": "openai-gpt4",
+    "Providers": {
+      "openai-gpt4": {
+        "Provider": "OpenAI",
+        "ApiKey": "sk-...",
+        "Model": "gpt-4",
+        "MaxTokens": 2000
+      },
+      "anthropic-claude": {
+        "Provider": "Anthropic",
+        "ApiKey": "sk-ant-...",
+        "Model": "claude-sonnet-4-5-20250929",
+        "MaxTokens": 4000
+      },
+      "google-gemini": {
+        "Provider": "Google",
+        "ApiKey": "...",
+        "Model": "gemini-2.0-flash",
+        "MaxTokens": 8000
+      }
+    }
   }
 }
 ```
@@ -148,12 +174,17 @@ The `ILLMServiceFactory` creates the appropriate service instance based on your 
 public interface ILLMServiceFactory
 {
     ILLMService CreateService();
+    ILLMService CreateService(string providerName);
+    IEnumerable<string> GetConfiguredProviders();
+    string GetDefaultProviderName();
 }
 ```
 
 This factory pattern enables:
 - **Configuration-based provider selection** - Choose provider via settings
+- **Multiple provider support** - Create services for different providers by name
 - **Provider abstraction** - Your code doesn't need to know which provider is being used
+- **Provider discovery** - Enumerate all configured providers
 - **Easy testing** - Mock the factory in unit tests
 
 ### Request and Response Models
@@ -198,25 +229,89 @@ public class LLMResponse
 
 ### Configuration Options
 
-The `LLMSettings` class provides configuration for all providers:
+LLM.Nexus supports both single and multi-provider configurations:
+
+**LLMSettings:**
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `Provider` | `LLMProvider` | Yes | - | The LLM provider (OpenAI, Anthropic) |
+| `Providers` | `Dictionary<string, ProviderConfiguration>` | Yes | - | Named provider configurations |
+| `DefaultProvider` | `string` | No | First provider | Default provider to use |
+
+**ProviderConfiguration:**
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `Provider` | `LLMProvider` | Yes | - | The LLM provider (OpenAI, Anthropic, Google) |
 | `ApiKey` | `string` | Yes | - | API key for authentication |
 | `Model` | `string` | Yes | - | Model identifier |
 | `MaxTokens` | `int?` | No | 2000 | Maximum tokens to generate |
 | `Stream` | `bool?` | No | false | Enable streaming responses (future) |
+
+### Single Provider Configuration
+
+For applications using only one provider:
+
+```json
+{
+  "LLMSettings": {
+    "Providers": {
+      "default": {
+        "Provider": "OpenAI",
+        "ApiKey": "sk-...",
+        "Model": "gpt-4",
+        "MaxTokens": 2000
+      }
+    }
+  }
+}
+```
+
+### Multi-Provider Configuration
+
+For applications using multiple providers:
+
+```json
+{
+  "LLMSettings": {
+    "DefaultProvider": "openai",
+    "Providers": {
+      "openai": {
+        "Provider": "OpenAI",
+        "ApiKey": "sk-...",
+        "Model": "gpt-4",
+        "MaxTokens": 2000
+      },
+      "anthropic": {
+        "Provider": "Anthropic",
+        "ApiKey": "sk-ant-...",
+        "Model": "claude-sonnet-4-5-20250929",
+        "MaxTokens": 4000
+      },
+      "google": {
+        "Provider": "Google",
+        "ApiKey": "...",
+        "Model": "gemini-2.0-flash",
+        "MaxTokens": 8000
+      }
+    }
+  }
+}
+```
 
 ### OpenAI Configuration
 
 ```json
 {
   "LLMSettings": {
-    "Provider": "OpenAI",
-    "ApiKey": "sk-...",
-    "Model": "gpt-4",
-    "MaxTokens": 2000
+    "Providers": {
+      "openai": {
+        "Provider": "OpenAI",
+        "ApiKey": "sk-...",
+        "Model": "gpt-4",
+        "MaxTokens": 2000
+      }
+    }
   }
 }
 ```
@@ -232,10 +327,14 @@ The `LLMSettings` class provides configuration for all providers:
 ```json
 {
   "LLMSettings": {
-    "Provider": "Anthropic",
-    "ApiKey": "sk-ant-...",
-    "Model": "claude-sonnet-4-5-20250929",
-    "MaxTokens": 4000
+    "Providers": {
+      "anthropic": {
+        "Provider": "Anthropic",
+        "ApiKey": "sk-ant-...",
+        "Model": "claude-sonnet-4-5-20250929",
+        "MaxTokens": 4000
+      }
+    }
   }
 }
 ```
@@ -247,15 +346,47 @@ The `LLMSettings` class provides configuration for all providers:
 - `claude-3-haiku` - Fast and economical
 - Other Claude models
 
+### Google Configuration
+
+```json
+{
+  "LLMSettings": {
+    "Providers": {
+      "google": {
+        "Provider": "Google",
+        "ApiKey": "...",
+        "Model": "gemini-2.0-flash",
+        "MaxTokens": 8000
+      }
+    }
+  }
+}
+```
+
+**Supported Models:**
+- `gemini-2.0-flash` - Latest Flash model, fast and efficient
+- `gemini-pro` - Production-ready model for various tasks
+- `gemini-ultra` - Most capable Google model
+- Other Gemini models
+
 ### Environment Variable Configuration
 
 For production environments, use environment variables or secure configuration:
 
 ```bash
-# Using environment variables
-export LLMSettings__Provider="OpenAI"
-export LLMSettings__ApiKey="sk-..."
-export LLMSettings__Model="gpt-4"
+# Using environment variables for single provider
+export LLMSettings__Providers__default__Provider="OpenAI"
+export LLMSettings__Providers__default__ApiKey="sk-..."
+export LLMSettings__Providers__default__Model="gpt-4"
+
+# For multiple providers
+export LLMSettings__DefaultProvider="openai"
+export LLMSettings__Providers__openai__Provider="OpenAI"
+export LLMSettings__Providers__openai__ApiKey="sk-..."
+export LLMSettings__Providers__openai__Model="gpt-4"
+export LLMSettings__Providers__anthropic__Provider="Anthropic"
+export LLMSettings__Providers__anthropic__ApiKey="sk-ant-..."
+export LLMSettings__Providers__anthropic__Model="claude-sonnet-4-5-20250929"
 ```
 
 ```csharp
@@ -394,42 +525,76 @@ var response = await _llmService.GenerateResponseAsync(request);
 
 ### Multiple Providers in One Application
 
-Support different providers for different use cases:
+Use different providers for different use cases in the same application:
 
 ```csharp
 public class MultiProviderService
 {
-    private readonly IConfiguration _configuration;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly ILLMService _openAI;
+    private readonly ILLMService _anthropic;
+    private readonly ILLMService _google;
+    private readonly ILLMServiceFactory _factory;
 
-    public MultiProviderService(IConfiguration configuration, IServiceProvider serviceProvider)
+    public MultiProviderService(ILLMServiceFactory factory)
     {
-        _configuration = configuration;
-        _serviceProvider = serviceProvider;
+        _factory = factory;
+
+        // Create instances for each provider
+        _openAI = factory.CreateService("openai-gpt4");
+        _anthropic = factory.CreateService("anthropic-claude");
+        _google = factory.CreateService("google-gemini");
     }
 
     public async Task<string> UseOpenAIAsync(string prompt)
     {
-        var openAIService = CreateService("OpenAI");
-        var response = await openAIService.GenerateResponseAsync(prompt);
+        var response = await _openAI.GenerateResponseAsync(prompt);
         return response.Content;
     }
 
     public async Task<string> UseAnthropicAsync(string prompt)
     {
-        var anthropicService = CreateService("Anthropic");
-        var response = await anthropicService.GenerateResponseAsync(prompt);
+        var response = await _anthropic.GenerateResponseAsync(prompt);
         return response.Content;
     }
 
-    private ILLMService CreateService(string provider)
+    public async Task<string> UseGoogleAsync(string prompt)
     {
-        // Create provider-specific configuration
-        var settings = _configuration.GetSection("LLMSettings").Get<LLMSettings>();
-        settings.Provider = Enum.Parse<LLMProvider>(provider);
+        var response = await _google.GenerateResponseAsync(prompt);
+        return response.Content;
+    }
 
-        var factory = _serviceProvider.GetRequiredService<ILLMServiceFactory>();
-        return factory.CreateService();
+    public async Task<string> CompareProvidersAsync(string prompt)
+    {
+        // Call all providers simultaneously
+        var tasks = new[]
+        {
+            _openAI.GenerateResponseAsync(prompt),
+            _anthropic.GenerateResponseAsync(prompt),
+            _google.GenerateResponseAsync(prompt)
+        };
+
+        var responses = await Task.WhenAll(tasks);
+
+        return $"OpenAI: {responses[0].Content}\n\n" +
+               $"Anthropic: {responses[1].Content}\n\n" +
+               $"Google: {responses[2].Content}";
+    }
+
+    public async Task<string> UseDefaultProviderAsync(string prompt)
+    {
+        // Uses the configured default provider
+        var defaultService = _factory.CreateService();
+        var response = await defaultService.GenerateResponseAsync(prompt);
+        return response.Content;
+    }
+
+    public void ListConfiguredProviders()
+    {
+        var providers = _factory.GetConfiguredProviders();
+        var defaultProvider = _factory.GetDefaultProviderName();
+
+        Console.WriteLine($"Configured providers: {string.Join(", ", providers)}");
+        Console.WriteLine($"Default provider: {defaultProvider}");
     }
 }
 ```
@@ -452,6 +617,14 @@ public class MultiProviderService
 | `claude-3-opus` | 200K tokens | Complex reasoning | Medium | Higher |
 | `claude-3-sonnet` | 200K tokens | Balanced performance | Fast | Medium |
 | `claude-3-haiku` | 200K tokens | Simple tasks, speed | Fastest | Lowest |
+
+### Google Models
+
+| Model | Context Window | Best For | Speed | Cost |
+|-------|----------------|----------|-------|------|
+| `gemini-2.0-flash` | 1M tokens | Fast responses, efficiency | Fastest | Low |
+| `gemini-pro` | 1M tokens | Production tasks, balanced | Fast | Medium |
+| `gemini-ultra` | 1M tokens | Complex reasoning | Medium | Higher |
 
 ## Error Handling
 
@@ -631,51 +804,56 @@ public class BadService
 LLM.Nexus follows SOLID principles and clean architecture patterns:
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Your Application                     │
-└────────────────────────┬────────────────────────────────┘
-                         │
-                         ↓
-┌─────────────────────────────────────────────────────────┐
-│              ILLMServiceFactory (Abstraction)           │
-│                  CreateService()                        │
-└────────────────────────┬────────────────────────────────┘
-                         │
-                         ↓
-┌─────────────────────────────────────────────────────────┐
-│               ILLMService (Abstraction)                 │
-│            GenerateResponseAsync(...)                   │
-└────────────┬───────────────────────────┬────────────────┘
-             │                           │
-     ┌───────▼────────┐         ┌───────▼────────┐
-     │ OpenAIService  │         │AnthropicService│
-     │  (Provider)    │         │   (Provider)   │
-     └───────┬────────┘         └───────┬────────┘
-             │                           │
-     ┌───────▼────────┐         ┌───────▼────────┐
-     │  OpenAI SDK    │         │ Anthropic SDK  │
-     │   (External)   │         │   (External)   │
-     └────────────────┘         └────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                    Your Application                          │
+└─────────────────────────┬────────────────────────────────────┘
+                          │
+                          ↓
+┌──────────────────────────────────────────────────────────────┐
+│           ILLMServiceFactory (Abstraction)                   │
+│  CreateService() | CreateService(name)                       │
+│  GetConfiguredProviders() | GetDefaultProviderName()         │
+└─────────────────────────┬────────────────────────────────────┘
+                          │
+                          ↓
+┌──────────────────────────────────────────────────────────────┐
+│             ILLMService (Abstraction)                        │
+│          GenerateResponseAsync(...)                          │
+└───┬──────────────────────┬────────────────────┬──────────────┘
+    │                      │                    │
+┌───▼────────┐    ┌───────▼────────┐   ┌──────▼────────┐
+│  OpenAI    │    │   Anthropic    │   │    Google     │
+│  Service   │    │    Service     │   │   Service     │
+│ (Provider) │    │   (Provider)   │   │  (Provider)   │
+└───┬────────┘    └───────┬────────┘   └──────┬────────┘
+    │                     │                    │
+┌───▼────────┐    ┌───────▼────────┐   ┌──────▼────────┐
+│  OpenAI    │    │   Anthropic    │   │   Google      │
+│    SDK     │    │      SDK       │   │  Cloud SDK    │
+│ (External) │    │   (External)   │   │  (External)   │
+└────────────┘    └────────────────┘   └───────────────┘
 ```
 
 ### Key Components
 
 **Abstractions Layer:**
 - `ILLMService` - Unified service interface
-- `ILLMServiceFactory` - Service creation abstraction
+- `ILLMServiceFactory` - Multi-provider service creation abstraction
 - `LLMRequest` - Provider-agnostic request model
 - `LLMResponse` - Provider-agnostic response model
+- `ProviderConfiguration` - Individual provider settings
 
 **Provider Layer:**
 - `OpenAIService` - OpenAI implementation
 - `AnthropicService` - Anthropic implementation
+- `GoogleService` - Google Gemini implementation
 - Provider-specific adapters and transformations
 
 **Infrastructure Layer:**
-- Dependency injection extensions
-- Configuration validation
-- HTTP client management
-- Logging infrastructure
+- Dependency injection extensions with multi-provider support
+- Configuration validation for multiple providers
+- HTTP client management per provider
+- Logging infrastructure with provider context
 
 ### Extensibility
 
@@ -723,8 +901,8 @@ public class CustomProviderService : ILLMService
 
 ### Test Statistics
 
-- **Total Tests**: 59
-- **Passed**: 59
+- **Total Tests**: 65
+- **Passed**: 65
 - **Failed**: 0
 - **Code Coverage**: 100%
 - **Test Framework**: xUnit
@@ -734,10 +912,10 @@ public class CustomProviderService : ILLMService
 | Category | Description | Test Count |
 |----------|-------------|------------|
 | Service Tests | Core service functionality, request/response handling | 18 |
-| Factory Tests | Service factory creation, provider selection | 8 |
-| Configuration Tests | Settings validation, configuration binding | 12 |
-| Provider Tests | Provider-specific implementations | 15 |
-| Integration Tests | End-to-end scenarios | 6 |
+| Factory Tests | Multi-provider factory, named provider creation | 15 |
+| Configuration Tests | Multi-provider settings validation, configuration binding | 14 |
+| Provider Tests | Provider-specific implementations (OpenAI, Anthropic, Google) | 12 |
+| Integration Tests | Multi-provider scenarios, dependency injection | 6 |
 
 ### Running Tests
 
@@ -833,12 +1011,15 @@ public interface ILLMService
 
 #### `ILLMServiceFactory`
 
-Factory for creating service instances.
+Factory for creating service instances with multi-provider support.
 
 ```csharp
 public interface ILLMServiceFactory
 {
     ILLMService CreateService();
+    ILLMService CreateService(string providerName);
+    IEnumerable<string> GetConfiguredProviders();
+    string GetDefaultProviderName();
 }
 ```
 
@@ -899,10 +1080,25 @@ public class TokenUsage
 
 #### `LLMSettings`
 
-Configuration settings.
+Configuration settings for multi-provider support.
 
 ```csharp
 public class LLMSettings
+{
+    [Required]
+    [MinLength(1)]
+    public Dictionary<string, ProviderConfiguration> Providers { get; set; }
+
+    public string DefaultProvider { get; set; }
+}
+```
+
+#### `ProviderConfiguration`
+
+Configuration for individual provider instances.
+
+```csharp
+public class ProviderConfiguration
 {
     [Required]
     public LLMProvider Provider { get; set; }
@@ -913,8 +1109,7 @@ public class LLMSettings
     [Required]
     public string Model { get; set; }
 
-    [Range(1, 100000)]
-    public int? MaxTokens { get; set; }
+    public int? MaxTokens { get; set; } = 2000;
 
     public bool? Stream { get; set; }
 }
@@ -928,7 +1123,8 @@ Supported providers enumeration.
 public enum LLMProvider
 {
     OpenAI,
-    Anthropic
+    Anthropic,
+    Google
 }
 ```
 
@@ -949,15 +1145,16 @@ builder.Services.AddLLMServices();
 ```
 
 **Registers:**
-- `ILLMServiceFactory` as singleton
-- `ILLMService` implementations (OpenAI, Anthropic)
+- `ILLMServiceFactory` as singleton with multi-provider support
 - Configuration binding and validation
 - HTTP clients with proper lifetime management
 
 ## Roadmap
 
+- [x] Multi-provider support (v2.0)
+- [x] Google Gemini support (v2.0)
+- [x] Named provider instances (v2.0)
 - [ ] Azure OpenAI support
-- [ ] Google Gemini/PaLM support
 - [ ] Streaming response support
 - [ ] Function calling support
 - [ ] Multi-turn conversation support
@@ -968,6 +1165,8 @@ builder.Services.AddLLMServices();
 - [ ] Token counting utilities
 - [ ] Prompt templates
 - [ ] Response validation
+- [ ] Provider failover and load balancing
+- [ ] Cost tracking and optimization
 
 ## Contributing
 
@@ -1005,6 +1204,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 - Built with [OpenAI .NET SDK](https://github.com/openai/openai-dotnet)
 - Built with [Anthropic.SDK](https://github.com/tghamm/Anthropic.SDK)
+- Built with [Google.Cloud.AIPlatform.V1](https://cloud.google.com/dotnet/docs/reference/Google.Cloud.AIPlatform.V1/latest)
 
 ---
 

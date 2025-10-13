@@ -1,9 +1,11 @@
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace LLM.Nexus.Settings
 {
     /// <summary>
     /// Configuration settings for LLM providers.
+    /// Supports multiple named provider configurations in the same application.
     /// </summary>
     public class LLMSettings
     {
@@ -13,32 +15,17 @@ namespace LLM.Nexus.Settings
         public const string Section = "LLMSettings";
 
         /// <summary>
-        /// Gets or sets the LLM provider to use (OpenAI, Anthropic, etc.).
+        /// Gets or sets multiple named provider configurations.
+        /// This enables multi-provider support in the same application.
         /// </summary>
         [Required]
-        public LLMProvider Provider { get; set; }
+        [MinLength(1, ErrorMessage = "At least one provider must be configured.")]
+        public Dictionary<string, ProviderConfiguration> Providers { get; set; } = new Dictionary<string, ProviderConfiguration>();
 
         /// <summary>
-        /// Gets or sets the API key for authenticating with the LLM provider.
+        /// Gets or sets the name of the default provider to use when not specified.
+        /// If not set, the first configured provider will be used as default.
         /// </summary>
-        [Required]
-        public string ApiKey { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Gets or sets the model identifier to use (e.g., "gpt-4", "claude-sonnet-4-5-20250929").
-        /// </summary>
-        [Required]
-        public string Model { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Gets or sets the maximum number of tokens to generate in the response.
-        /// Defaults to 2000 if not specified.
-        /// </summary>
-        public int? MaxTokens { get; set; } = 2000;
-
-        /// <summary>
-        /// Gets or sets whether to use streaming for responses.
-        /// </summary>
-        public bool? Stream { get; set; }
+        public string DefaultProvider { get; set; } = string.Empty;
     }
 }

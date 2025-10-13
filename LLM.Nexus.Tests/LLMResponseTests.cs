@@ -27,7 +27,7 @@ namespace LLM.Nexus.Tests
                 Provider = "OpenAI",
                 Timestamp = timestamp,
                 FinishReason = "stop",
-                StopSequence = null,
+                StopSequence = "seq",
                 Usage = usage
             };
 
@@ -38,7 +38,7 @@ namespace LLM.Nexus.Tests
             Assert.Equal("OpenAI", response.Provider);
             Assert.Equal(timestamp, response.Timestamp);
             Assert.Equal("stop", response.FinishReason);
-            Assert.Null(response.StopSequence);
+            Assert.Equal("seq", response.StopSequence);
             Assert.NotNull(response.Usage);
             Assert.Equal(10, response.Usage.PromptTokens);
             Assert.Equal(20, response.Usage.CompletionTokens);

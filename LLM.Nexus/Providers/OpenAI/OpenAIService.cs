@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using LLM.Nexus.Models;
 using LLM.Nexus.Settings;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using OpenAI.Chat;
 
 namespace LLM.Nexus.Providers.OpenAI
@@ -13,16 +12,16 @@ namespace LLM.Nexus.Providers.OpenAI
     internal class OpenAIService : IOpenAIService
     {
         private readonly ILogger<OpenAIService> _logger;
-        private readonly LLMSettings _settings;
+        private readonly ProviderConfiguration _config;
         private readonly ChatClient _client;
 
-        public OpenAIService(ILogger<OpenAIService> logger, IOptions<LLMSettings> settings)
+        public OpenAIService(ILogger<OpenAIService> logger, ProviderConfiguration config)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _settings = settings?.Value ?? throw new ArgumentNullException(nameof(settings));
+            _config = config ?? throw new ArgumentNullException(nameof(config));
 
             // Initialize client once and reuse it
-            _client = new ChatClient(_settings.Model, _settings.ApiKey);
+            _client = new ChatClient(_config.Model, _config.ApiKey);
         }
 
         public async Task<LLMResponse> GenerateResponseAsync(LLMRequest request, CancellationToken cancellationToken = default)
@@ -42,7 +41,7 @@ namespace LLM.Nexus.Providers.OpenAI
 
                 var chatOptions = new ChatCompletionOptions
                 {
-                    MaxOutputTokenCount = request.MaxTokens ?? _settings.MaxTokens
+                    MaxOutputTokenCount = request.MaxTokens ?? _config.MaxTokens
                 };
 
                 if (request.Temperature.HasValue)

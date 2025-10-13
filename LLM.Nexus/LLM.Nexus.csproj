@@ -6,18 +6,18 @@
         <Nullable>enable</Nullable>
 
         <PackageId>LLM.Nexus</PackageId>
-        <Version>1.0.1</Version>
+        <Version>2.0.0</Version>
         <Authors>Alexandros Mouratidis</Authors>
         <Company>Alexandros Mouratidis</Company>
-        
-        <Description>A unified abstraction layer for multiple LLM providers (OpenAI, Anthropic) with support for dependency injection, rich response metadata, and extensible architecture.</Description>
-        <PackageTags>LLM;AI;OpenAI;Anthropic;Claude;GPT;ChatGPT;NLP;Machine-Learning</PackageTags>
-        
+
+        <Description>A unified abstraction layer for multiple LLM providers (OpenAI, Anthropic, Google) with support for multiple simultaneous providers, named configurations, dependency injection, rich response metadata, and extensible architecture.</Description>
+        <PackageTags>LLM;AI;OpenAI;Anthropic;Google;Gemini;Claude;GPT;ChatGPT;NLP;Machine-Learning;Multi-Provider</PackageTags>
+
         <PackageProjectUrl>https://github.com/Mouratid/llm.nexus</PackageProjectUrl>
         <RepositoryUrl>https://github.com/Mouratid/llm.nexus</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
-        
+
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <NoWarn>$(NoWarn);CS1591</NoWarn>
@@ -26,8 +26,18 @@
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <PublishRepositoryUrl>true</PublishRepositoryUrl>
         <EmbedUntrackedSources>true</EmbedUntrackedSources>
-        
-        <PackageReleaseNotes>Initial release: Unified API for OpenAI and Anthropic LLMs with rich models, async support, DI integration, validation, and comprehensive logging.</PackageReleaseNotes>
+
+        <PackageReleaseNotes>v2.0.0 - Major Release: Multi-Provider Support
+• BREAKING CHANGE: New configuration schema with dictionary-based provider configuration
+• Support for multiple providers in the same application with named instances
+• Google Gemini provider support added
+• Enhanced ILLMServiceFactory with provider selection methods (CreateService(name), GetConfiguredProviders, GetDefaultProviderName)
+• New ProviderConfiguration class for individual provider settings
+• Simplified dependency injection - no longer registers individual provider services
+• 65 comprehensive tests covering all providers and multi-provider scenarios
+• Updated documentation with migration guide and multi-provider examples
+
+Migration: Update appsettings.json to use new Providers dictionary structure. See README for details.</PackageReleaseNotes>
 
         <PackageIcon>Icon.png</PackageIcon>
     </PropertyGroup>

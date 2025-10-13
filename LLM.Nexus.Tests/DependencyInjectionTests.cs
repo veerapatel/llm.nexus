@@ -1,6 +1,4 @@
 using FluentAssertions;
-using LLM.Nexus.Providers.Anthropic;
-using LLM.Nexus.Providers.OpenAI;
 using LLM.Nexus.Settings;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,7 +10,7 @@ namespace LLM.Nexus.Tests
     public class DependencyInjectionTests
     {
         [Fact]
-        public void AddLLMServices_RegistersAllRequiredServices()
+        public void AddLLMServices_RegistersFactoryService()
         {
             // Arrange
             var services = new ServiceCollection();
@@ -21,9 +19,15 @@ namespace LLM.Nexus.Tests
             services.AddLogging();
             services.Configure<LLMSettings>(options =>
             {
-                options.Provider = LLMProvider.OpenAI;
-                options.ApiKey = "test-key";
-                options.Model = "gpt-4";
+                options.Providers = new Dictionary<string, ProviderConfiguration>
+                {
+                    ["default"] = new ProviderConfiguration
+                    {
+                        Provider = LLMProvider.OpenAI,
+                        ApiKey = "test-key",
+                        Model = "gpt-4"
+                    }
+                };
             });
 
             // Act
@@ -34,16 +38,10 @@ namespace LLM.Nexus.Tests
             var factory = serviceProvider.GetService<ILLMServiceFactory>();
             factory.Should().NotBeNull();
             factory.Should().BeOfType<LLMServiceFactory>();
-
-            var openAIService = serviceProvider.GetService<IOpenAIService>();
-            openAIService.Should().NotBeNull();
-
-            var anthropicService = serviceProvider.GetService<IAnthropicService>();
-            anthropicService.Should().NotBeNull();
         }
 
         [Fact]
-        public void AddLLMServices_RegistersServicesAsSingletons()
+        public void AddLLMServices_RegistersFactoryAsSingleton()
         {
             // Arrange
             var services = new ServiceCollection();
@@ -52,9 +50,15 @@ namespace LLM.Nexus.Tests
             services.AddLogging();
             services.Configure<LLMSettings>(options =>
             {
-                options.Provider = LLMProvider.OpenAI;
-                options.ApiKey = "test-key";
-                options.Model = "gpt-4";
+                options.Providers = new Dictionary<string, ProviderConfiguration>
+                {
+                    ["default"] = new ProviderConfiguration
+                    {
+                        Provider = LLMProvider.OpenAI,
+                        ApiKey = "test-key",
+                        Model = "gpt-4"
+                    }
+                };
             });
 
             services.AddLLMServices();
@@ -64,16 +68,8 @@ namespace LLM.Nexus.Tests
             var factory1 = serviceProvider.GetService<ILLMServiceFactory>();
             var factory2 = serviceProvider.GetService<ILLMServiceFactory>();
 
-            var openAI1 = serviceProvider.GetService<IOpenAIService>();
-            var openAI2 = serviceProvider.GetService<IOpenAIService>();
-
-            var anthropic1 = serviceProvider.GetService<IAnthropicService>();
-            var anthropic2 = serviceProvider.GetService<IAnthropicService>();
-
             // Assert
             factory1.Should().BeSameAs(factory2);
-            openAI1.Should().BeSameAs(openAI2);
-            anthropic1.Should().BeSameAs(anthropic2);
         }
 
         [Fact]
@@ -83,11 +79,11 @@ namespace LLM.Nexus.Tests
             var services = new ServiceCollection();
             var configuration = new ConfigurationBuilder().Build();
             services.AddSingleton<IConfiguration>(configuration);
+            services.AddLogging(); // Required for factory
             services.Configure<LLMSettings>(options =>
             {
-                // Missing required fields
-                options.Provider = LLMProvider.OpenAI;
-                // ApiKey and Model are missing
+                // Empty providers - should fail validation
+                options.Providers = new Dictionary<string, ProviderConfiguration>();
             });
 
             services.AddLLMServices();
@@ -113,6 +109,90 @@ namespace LLM.Nexus.Tests
 
             // Assert
             result.Should().BeSameAs(services);
+        }
+
+        [Fact]
+        public void AddLLMServices_WithMultipleProviders_AllowsFactoryToCreateServices()
+        {
+            // Arrange
+            var services = new ServiceCollection();
+            var configuration = new ConfigurationBuilder().Build();
+            services.AddSingleton<IConfiguration>(configuration);
+            services.AddLogging();
+            services.Configure<LLMSettings>(options =>
+            {
+                options.Providers = new Dictionary<string, ProviderConfiguration>
+                {
+                    ["openai"] = new ProviderConfiguration
+                    {
+                        Provider = LLMProvider.OpenAI,
+                        ApiKey = "test-key",
+                        Model = "gpt-4"
+                    },
+                    ["anthropic"] = new ProviderConfiguration
+                    {
+                        Provider = LLMProvider.Anthropic,
+                        ApiKey = "test-key",
+                        Model = "claude-sonnet-4-5-20250929"
+                    }
+                };
+            });
+
+            services.AddLLMServices();
+            var serviceProvider = services.BuildServiceProvider();
+            var factory = serviceProvider.GetRequiredService<ILLMServiceFactory>();
+
+            // Act
+            var openAIService = factory.CreateService("openai");
+            var anthropicService = factory.CreateService("anthropic");
+
+            // Assert
+            openAIService.Should().NotBeNull();
+            openAIService.Should().BeAssignableTo<ILLMService>();
+            anthropicService.Should().NotBeNull();
+            anthropicService.Should().BeAssignableTo<ILLMService>();
+        }
+
+        [Fact]
+        public void AddLLMServices_WithDefaultProvider_CreatesDefaultService()
+        {
+            // Arrange
+            var services = new ServiceCollection();
+            var configuration = new ConfigurationBuilder().Build();
+            services.AddSingleton<IConfiguration>(configuration);
+            services.AddLogging();
+            services.Configure<LLMSettings>(options =>
+            {
+                options.DefaultProvider = "anthropic";
+                options.Providers = new Dictionary<string, ProviderConfiguration>
+                {
+                    ["openai"] = new ProviderConfiguration
+                    {
+                        Provider = LLMProvider.OpenAI,
+                        ApiKey = "test-key",
+                        Model = "gpt-4"
+                    },
+                    ["anthropic"] = new ProviderConfiguration
+                    {
+                        Provider = LLMProvider.Anthropic,
+                        ApiKey = "test-key",
+                        Model = "claude-sonnet-4-5-20250929"
+                    }
+                };
+            });
+
+            services.AddLLMServices();
+            var serviceProvider = services.BuildServiceProvider();
+            var factory = serviceProvider.GetRequiredService<ILLMServiceFactory>();
+
+            // Act
+            var defaultService = factory.CreateService();
+            var defaultProviderName = factory.GetDefaultProviderName();
+
+            // Assert
+            defaultService.Should().NotBeNull();
+            defaultService.Should().BeAssignableTo<ILLMService>();
+            defaultProviderName.Should().Be("anthropic");
         }
     }
 }
