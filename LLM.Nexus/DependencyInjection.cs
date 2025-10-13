@@ -1,4 +1,5 @@
 using LLM.Nexus.Providers.Anthropic;
+using LLM.Nexus.Providers.Google;
 using LLM.Nexus.Providers.OpenAI;
 using LLM.Nexus.Settings;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,6 +25,7 @@ namespace LLM.Nexus
 
             services.AddSingleton<IAnthropicService, AnthropicService>();
             services.AddSingleton<IOpenAIService, OpenAIService>();
+            services.AddSingleton<IGoogleService, GoogleService>();
             services.AddSingleton<ILLMServiceFactory, LLMServiceFactory>();
 
             return services;

@@ -13,6 +13,11 @@ namespace LLM.Nexus.Settings
         /// <summary>
         /// Anthropic provider (Claude models).
         /// </summary>
-        Anthropic
+        Anthropic,
+
+        /// <summary>
+        /// Google provider (Gemini models).
+        /// </summary>
+        Google
     }
 }

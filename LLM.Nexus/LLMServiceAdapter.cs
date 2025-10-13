@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using LLM.Nexus.Models;
 using LLM.Nexus.Providers.Anthropic;
+using LLM.Nexus.Providers.Google;
 using LLM.Nexus.Providers.OpenAI;
 
 namespace LLM.Nexus
@@ -19,6 +20,11 @@ namespace LLM.Nexus
         public LLMServiceAdapter(IAnthropicService anthropicService)
         {
             _service = anthropicService ?? throw new ArgumentNullException(nameof(anthropicService));
+        }
+
+        public LLMServiceAdapter(IGoogleService googleService)
+        {
+            _service = googleService ?? throw new ArgumentNullException(nameof(googleService));
         }
 
         public Task<LLMResponse> GenerateResponseAsync(LLMRequest request, CancellationToken cancellationToken = default)

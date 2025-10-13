@@ -1,5 +1,6 @@
 using System;
 using LLM.Nexus.Providers.Anthropic;
+using LLM.Nexus.Providers.Google;
 using LLM.Nexus.Providers.OpenAI;
 using LLM.Nexus.Settings;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,6 +36,8 @@ namespace LLM.Nexus
                     return new LLMServiceAdapter(_serviceProvider.GetRequiredService<IOpenAIService>());
                 case LLMProvider.Anthropic:
                     return new LLMServiceAdapter(_serviceProvider.GetRequiredService<IAnthropicService>());
+                case LLMProvider.Google:
+                    return new LLMServiceAdapter(_serviceProvider.GetRequiredService<IGoogleService>());
                 default:
                     throw new ArgumentException($"Unsupported LLM provider: {_settings.Provider}");
             }
