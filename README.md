@@ -1,6 +1,7 @@
 # LLM.Nexus
 
 [![NuGet](https://img.shields.io/nuget/v/LLM.Nexus.svg)](https://www.nuget.org/packages/LLM.Nexus)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/LLM.Nexus.svg)](https://www.nuget.org/packages/LLM.Nexus)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-65%20passed-brightgreen.svg)]()
 [![.NET Standard](https://img.shields.io/badge/.NET%20Standard-2.0-blue.svg)]()
@@ -354,7 +355,7 @@ For applications using multiple providers:
     "Providers": {
       "google": {
         "Provider": "Google",
-        "ApiKey": "...",
+        "ApiKey": "your-google-ai-studio-api-key",
         "Model": "gemini-2.0-flash",
         "MaxTokens": 8000
       }
@@ -363,11 +364,14 @@ For applications using multiple providers:
 }
 ```
 
+**Authentication:**
+Google provider uses Google AI Studio API keys. Get your API key from [Google AI Studio](https://makersuite.google.com/app/apikey).
+
 **Supported Models:**
 - `gemini-2.0-flash` - Latest Flash model, fast and efficient
-- `gemini-pro` - Production-ready model for various tasks
-- `gemini-ultra` - Most capable Google model
-- Other Gemini models
+- `gemini-1.5-pro` - Production-ready model for various tasks
+- `gemini-1.5-flash` - Fast and capable
+- Other Gemini models (model name can include or exclude "models/" prefix)
 
 ### Environment Variable Configuration
 
@@ -623,8 +627,8 @@ public class MultiProviderService
 | Model | Context Window | Best For | Speed | Cost |
 |-------|----------------|----------|-------|------|
 | `gemini-2.0-flash` | 1M tokens | Fast responses, efficiency | Fastest | Low |
-| `gemini-pro` | 1M tokens | Production tasks, balanced | Fast | Medium |
-| `gemini-ultra` | 1M tokens | Complex reasoning | Medium | Higher |
+| `gemini-1.5-pro` | 2M tokens | Production tasks, balanced | Fast | Medium |
+| `gemini-1.5-flash` | 1M tokens | Fast and capable | Fastest | Low |
 
 ## Error Handling
 
@@ -1204,7 +1208,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 - Built with [OpenAI .NET SDK](https://github.com/openai/openai-dotnet)
 - Built with [Anthropic.SDK](https://github.com/tghamm/Anthropic.SDK)
-- Built with [Google.Cloud.AIPlatform.V1](https://cloud.google.com/dotnet/docs/reference/Google.Cloud.AIPlatform.V1/latest)
+- Built with [Google_GenerativeAI SDK](https://github.com/gunpal5/Google_GenerativeAI)
 
 ---
 

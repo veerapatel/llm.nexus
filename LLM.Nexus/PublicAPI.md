@@ -1,6 +1,6 @@
 # LLM.Nexus Public API Reference
 
-**Version:** 1.0.0
+**Version:** 2.1.0
 **Target Framework:** .NET Standard 2.0
 **Package:** [LLM.Nexus](https://www.nuget.org/packages/LLM.Nexus)
 
@@ -401,7 +401,7 @@ Console.WriteLine($"Estimated Cost: ${cost:F4}");
       },
       "google-gemini": {
         "Provider": "Google",
-        "ApiKey": "...",
+        "ApiKey": "your-google-ai-studio-api-key",
         "Model": "gemini-2.0-flash",
         "MaxTokens": 8000
       }
@@ -694,7 +694,7 @@ var builder = Host.CreateApplicationBuilder(args);
       },
       "google-gemini": {
         "Provider": "Google",
-        "ApiKey": "...",
+        "ApiKey": "your-google-ai-studio-api-key",
         "Model": "gemini-2.0-flash",
         "MaxTokens": 8000
       }
@@ -793,6 +793,24 @@ public class AIAssistant
 ---
 
 ## Version History
+
+### Version 2.1.0
+
+**Google AI SDK Migration**
+
+- **BREAKING CHANGE**: Migrated Google provider from `Google.Cloud.AIPlatform.V1` to `Google_GenerativeAI` SDK
+- Simplified Google authentication - now uses API key directly (Google AI Studio)
+- Improved Google provider implementation with cleaner API
+- Better support for system instructions in Google Gemini models
+- All existing functionality maintained (temperature, max tokens, system messages)
+- All 65 tests passing with new SDK
+
+**Migration Guide:**
+
+If using the Google provider, you must:
+1. Obtain a Google AI Studio API key from https://makersuite.google.com/app/apikey
+2. Update your configuration to use the new API key (instead of Vertex AI service account credentials)
+3. Model names can optionally include or exclude the "models/" prefix (e.g., both "gemini-2.0-flash" and "models/gemini-2.0-flash" work)
 
 ### Version 2.0.0
 

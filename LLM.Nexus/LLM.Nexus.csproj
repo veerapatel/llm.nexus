@@ -6,7 +6,7 @@
         <Nullable>enable</Nullable>
 
         <PackageId>LLM.Nexus</PackageId>
-        <Version>2.0.0</Version>
+        <Version>2.1.0</Version>
         <Authors>Alexandros Mouratidis</Authors>
         <Company>Alexandros Mouratidis</Company>
 
@@ -27,23 +27,21 @@
         <PublishRepositoryUrl>true</PublishRepositoryUrl>
         <EmbedUntrackedSources>true</EmbedUntrackedSources>
 
-        <PackageReleaseNotes>v2.0.0 - Major Release: Multi-Provider Support
-• BREAKING CHANGE: New configuration schema with dictionary-based provider configuration
-• Support for multiple providers in the same application with named instances
-• Google Gemini provider support added
-• Enhanced ILLMServiceFactory with provider selection methods (CreateService(name), GetConfiguredProviders, GetDefaultProviderName)
-• New ProviderConfiguration class for individual provider settings
-• Simplified dependency injection - no longer registers individual provider services
-• 65 comprehensive tests covering all providers and multi-provider scenarios
-• Updated documentation with migration guide and multi-provider examples
+        <PackageReleaseNotes>v2.1.0 - Google AI SDK Migration
+• BREAKING CHANGE: Migrated Google provider from Google.Cloud.AIPlatform.V1 to Google_GenerativeAI SDK
+• Simplified Google authentication - now uses API key directly (Google AI Studio)
+• Improved Google provider implementation with cleaner API
+• Better support for system instructions in Google Gemini models
+• All existing functionality maintained (temperature, max tokens, system messages)
+• All 65 tests passing with new SDK
 
-Migration: Update appsettings.json to use new Providers dictionary structure. See README for details.</PackageReleaseNotes>
+Migration: If using Google provider, ensure you have a Google AI Studio API key (instead of Vertex AI credentials).</PackageReleaseNotes>
 
         <PackageIcon>Icon.png</PackageIcon>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Google.Cloud.AIPlatform.V1" />
+        <PackageReference Include="Google_GenerativeAI" />
         <PackageReference Include="Microsoft.Extensions.Options" />
         <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
         <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />

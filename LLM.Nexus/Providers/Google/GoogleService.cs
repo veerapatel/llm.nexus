@@ -1,8 +1,10 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Google.Cloud.AIPlatform.V1;
+using GenerativeAI;
+using GenerativeAI.Types;
 using LLM.Nexus.Models;
 using LLM.Nexus.Settings;
 using Microsoft.Extensions.Logging;
@@ -13,15 +15,20 @@ namespace LLM.Nexus.Providers.Google
     {
         private readonly ILogger<GoogleService> _logger;
         private readonly ProviderConfiguration _config;
-        private readonly PredictionServiceClient _client;
+        private readonly GoogleAi _client;
 
         public GoogleService(ILogger<GoogleService> logger, ProviderConfiguration config)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _config = config ?? throw new ArgumentNullException(nameof(config));
 
-            // Initialize client once and reuse it
-            _client = PredictionServiceClient.Create();
+            if (string.IsNullOrWhiteSpace(_config.ApiKey))
+            {
+                throw new ArgumentException("Google API key is required", nameof(config));
+            }
+
+            // Initialize client with API key
+            _client = new GoogleAi(_config.ApiKey);
         }
 
         public async Task<LLMResponse> GenerateResponseAsync(LLMRequest request, CancellationToken cancellationToken = default)
@@ -39,48 +46,39 @@ namespace LLM.Nexus.Providers.Google
             {
                 _logger.LogInformation("Generating Google (Gemini) response for prompt with {PromptLength} characters", request.Prompt.Length);
 
-                // Build the request for Gemini
-                var content = new Content();
-                content.Parts.Add(new Part { Text = request.Prompt });
-
-                var generateContentRequest = new GenerateContentRequest
+                // Ensure model name has correct format
+                var modelName = _config.Model;
+                if (!modelName.StartsWith("models/", StringComparison.Ordinal))
                 {
-                    Model = _config.Model,
-                    Contents = { content }
-                };
-
-                // Add generation config if parameters are specified
-                if (request.MaxTokens.HasValue || request.Temperature.HasValue)
-                {
-                    var generationConfig = new GenerationConfig();
-
-                    if (request.MaxTokens.HasValue)
-                    {
-                        generationConfig.MaxOutputTokens = request.MaxTokens.Value;
-                    }
-
-                    if (request.Temperature.HasValue)
-                    {
-                        generationConfig.Temperature = (float)request.Temperature.Value;
-                    }
-
-                    generateContentRequest.GenerationConfig = generationConfig;
+                    modelName = $"models/{modelName}";
                 }
 
-                // Add system instruction if specified
+                // Build generation config
+                var generationConfig = new GenerationConfig();
+
+                if (request.Temperature.HasValue)
+                {
+                    generationConfig.Temperature = (float)request.Temperature.Value;
+                }
+
+                if (request.MaxTokens.HasValue)
+                {
+                    generationConfig.MaxOutputTokens = request.MaxTokens.Value;
+                }
+
+                // Create model with configuration
+                var model = _client.CreateGenerativeModel(modelName, generationConfig);
+
+                // Set system instruction if specified
                 if (!string.IsNullOrWhiteSpace(request.SystemMessage))
                 {
-                    generateContentRequest.SystemInstruction = new Content
-                    {
-                        Parts = { new Part { Text = request.SystemMessage } }
-                    };
+                    model.SystemInstruction = request.SystemMessage;
                 }
 
-                var apiResponse = await _client.GenerateContentAsync(generateContentRequest, cancellationToken).ConfigureAwait(false);
+                // Generate content
+                var apiResponse = await model.GenerateContentAsync(request.Prompt, cancellationToken).ConfigureAwait(false);
 
-                var responseText = apiResponse.Candidates.Count > 0 && apiResponse.Candidates[0].Content.Parts.Count > 0
-                    ? apiResponse.Candidates[0].Content.Parts[0].Text
-                    : string.Empty;
+                var responseText = apiResponse.Text() ?? string.Empty;
 
                 var response = new LLMResponse
                 {
@@ -89,9 +87,7 @@ namespace LLM.Nexus.Providers.Google
                     Model = _config.Model,
                     Provider = "Google",
                     Timestamp = DateTimeOffset.UtcNow,
-                    FinishReason = apiResponse.Candidates.Count > 0
-                        ? apiResponse.Candidates[0].FinishReason.ToString()
-                        : string.Empty,
+                    FinishReason = apiResponse.Candidates?.FirstOrDefault()?.FinishReason.ToString() ?? string.Empty,
                     Usage = new UsageInfo
                     {
                         PromptTokens = apiResponse.UsageMetadata?.PromptTokenCount ?? 0,
