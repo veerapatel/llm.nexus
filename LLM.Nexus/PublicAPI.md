@@ -18,6 +18,8 @@ This document provides a comprehensive reference for all public APIs exposed by 
   - [LLMRequest](#llmrequest)
   - [LLMResponse](#llmresponse)
   - [UsageInfo](#usageinfo)
+  - [FileContent](#filecontent)
+  - [MediaType](#mediatype)
 - [Configuration](#configuration)
   - [LLMSettings](#llmsettings)
   - [LLMProvider](#llmprovider)
@@ -238,6 +240,7 @@ Console.WriteLine($"Default provider: {defaultProvider}");
 | `SystemMessage` | `string` | No | - | `null` | System message/instructions (optional) |
 | `MaxTokens` | `int?` | No | 1-1,000,000 | `null` | Maximum number of tokens to generate |
 | `Temperature` | `double?` | No | 0.0-2.0 | `null` | Temperature for response generation |
+| `Files` | `List<FileContent>` | No | - | Empty list | List of files/media to include with the request |
 | `AdditionalParameters` | `Dictionary<string, object>` | No | - | `null` | Provider-specific parameters |
 
 #### Validation Rules
@@ -246,8 +249,9 @@ Console.WriteLine($"Default provider: {defaultProvider}");
 - **MaxTokens**: If specified, must be between 1 and 1,000,000
 - **Temperature**: If specified, must be between 0.0 and 2.0
 
-#### Example
+#### Examples
 
+**Text-Only Request:**
 ```csharp
 var request = new LLMRequest
 {
@@ -259,6 +263,33 @@ var request = new LLMRequest
     {
         { "top_p", 0.95 },
         { "frequency_penalty", 0.5 }
+    }
+};
+```
+
+**Multimodal Request with Image:**
+```csharp
+var request = new LLMRequest
+{
+    Prompt = "What's in this image? Describe it in detail.",
+    MaxTokens = 500,
+    Files = new List<FileContent>
+    {
+        FileContent.FromFile("photo.jpg", MediaType.Image)
+    }
+};
+```
+
+**Multimodal Request with Multiple Files:**
+```csharp
+var request = new LLMRequest
+{
+    Prompt = "Compare these two images and identify the differences.",
+    MaxTokens = 1000,
+    Files = new List<FileContent>
+    {
+        FileContent.FromFile("image1.jpg", MediaType.Image),
+        FileContent.FromFile("image2.jpg", MediaType.Image)
     }
 };
 ```
@@ -338,6 +369,218 @@ Console.WriteLine($"Total Tokens: {response.Usage.TotalTokens}");
 decimal cost = (response.Usage.PromptTokens * 0.03m / 1000) +
                (response.Usage.CompletionTokens * 0.06m / 1000);
 Console.WriteLine($"Estimated Cost: ${cost:F4}");
+```
+
+---
+
+### FileContent
+
+**Namespace:** `LLM.Nexus.Models`
+
+**Description:** Represents a file or media content to be sent to an LLM for multimodal requests (vision, document analysis, etc.).
+
+#### Properties
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `MediaType` | `MediaType` | Yes | The type of media (Image, Document, Audio, Video) |
+| `MimeType` | `string` | Yes | MIME type of the file (e.g., "image/jpeg", "application/pdf") |
+| `Data` | `string` | Conditional | Base64-encoded file data (required if Url is not provided) |
+| `FileName` | `string` | No | Optional file name for reference |
+| `Url` | `string` | Conditional | URL to remote file (OpenAI only, required if Data is not provided) |
+
+#### Static Factory Methods
+
+##### FromFile
+
+Creates a `FileContent` from a file path. Automatically detects MIME type based on file extension.
+
+```csharp
+public static FileContent FromFile(string filePath, MediaType mediaType)
+```
+
+**Parameters:**
+- `filePath` (`string`): The path to the file to load.
+- `mediaType` (`MediaType`): The type of media (Image, Document, Audio, Video).
+
+**Returns:** `FileContent` - A new FileContent instance with base64-encoded data.
+
+**Exceptions:**
+- `FileNotFoundException`: When the specified file does not exist.
+
+**Example:**
+```csharp
+var imageFile = FileContent.FromFile("photo.jpg", MediaType.Image);
+var pdfFile = FileContent.FromFile("document.pdf", MediaType.Document);
+```
+
+##### FromBytes
+
+Creates a `FileContent` from a byte array.
+
+```csharp
+public static FileContent FromBytes(
+    byte[] data,
+    MediaType mediaType,
+    string mimeType,
+    string fileName = null
+)
+```
+
+**Parameters:**
+- `data` (`byte[]`): The file data as bytes.
+- `mediaType` (`MediaType`): The type of media.
+- `mimeType` (`string`): The MIME type (e.g., "image/jpeg").
+- `fileName` (`string`, optional): Optional file name for reference.
+
+**Returns:** `FileContent` - A new FileContent instance with base64-encoded data.
+
+**Example:**
+```csharp
+byte[] imageBytes = await File.ReadAllBytesAsync("upload.jpg");
+var fileContent = FileContent.FromBytes(imageBytes, MediaType.Image, "image/jpeg", "upload.jpg");
+```
+
+##### FromUrl
+
+Creates a `FileContent` from a URL (OpenAI only).
+
+```csharp
+public static FileContent FromUrl(
+    string url,
+    MediaType mediaType,
+    string mimeType
+)
+```
+
+**Parameters:**
+- `url` (`string`): The URL of the remote file.
+- `mediaType` (`MediaType`): The type of media.
+- `mimeType` (`string`): The MIME type of the file.
+
+**Returns:** `FileContent` - A new FileContent instance with URL reference.
+
+**Example:**
+```csharp
+var fileContent = FileContent.FromUrl(
+    "https://example.com/image.jpg",
+    MediaType.Image,
+    "image/jpeg"
+);
+```
+
+#### Supported MIME Types
+
+**Images:**
+- `image/jpeg` - JPEG images (.jpg, .jpeg)
+- `image/png` - PNG images (.png)
+- `image/gif` - GIF images (.gif)
+- `image/webp` - WebP images (.webp)
+- `image/bmp` - Bitmap images (.bmp)
+- `image/svg+xml` - SVG images (.svg)
+
+**Documents:**
+- `application/pdf` - PDF documents (.pdf)
+- `text/plain` - Plain text (.txt)
+- `text/csv` - CSV files (.csv)
+- `application/json` - JSON files (.json)
+- `application/xml` - XML files (.xml)
+- `application/msword` - Word documents (.doc)
+- `application/vnd.openxmlformats-officedocument.wordprocessingml.document` - Word documents (.docx)
+
+**Audio:**
+- `audio/mpeg` - MP3 audio (.mp3)
+- `audio/wav` - WAV audio (.wav)
+- `audio/ogg` - OGG audio (.ogg)
+
+**Video:**
+- `video/mp4` - MP4 video (.mp4)
+- `video/x-msvideo` - AVI video (.avi)
+- `video/quicktime` - QuickTime video (.mov)
+
+#### Provider Support
+
+| Provider | Image Support | Document Support | URL Support | Notes |
+|----------|---------------|------------------|-------------|-------|
+| **OpenAI** | ✅ | Limited | ✅ | Supports image URLs and base64 |
+| **Anthropic** | ✅ | ✅ | ❌ | Base64 only, no URLs |
+| **Google** | ✅ | ✅ | ❌ | Base64 only, no URLs |
+
+#### Complete Example
+
+```csharp
+// Analyze an image from file
+var request = new LLMRequest
+{
+    Prompt = "What's in this image?",
+    Files = new List<FileContent>
+    {
+        FileContent.FromFile("vacation-photo.jpg", MediaType.Image)
+    }
+};
+
+var response = await llmService.GenerateResponseAsync(request);
+Console.WriteLine(response.Content);
+
+// Analyze a PDF document
+var docRequest = new LLMRequest
+{
+    Prompt = "Summarize this document",
+    Files = new List<FileContent>
+    {
+        FileContent.FromFile("report.pdf", MediaType.Document)
+    }
+};
+
+var docResponse = await llmService.GenerateResponseAsync(docRequest);
+Console.WriteLine(docResponse.Content);
+
+// Compare two images
+var compareRequest = new LLMRequest
+{
+    Prompt = "What are the differences between these images?",
+    Files = new List<FileContent>
+    {
+        FileContent.FromFile("before.jpg", MediaType.Image),
+        FileContent.FromFile("after.jpg", MediaType.Image)
+    }
+};
+
+var compareResponse = await llmService.GenerateResponseAsync(compareRequest);
+Console.WriteLine(compareResponse.Content);
+```
+
+---
+
+### MediaType
+
+**Namespace:** `LLM.Nexus.Models`
+
+**Description:** Specifies the type of media content in a multimodal request.
+
+#### Enum Values
+
+| Value | Description | Supported Formats |
+|-------|-------------|-------------------|
+| `Image` | Image content | JPEG, PNG, GIF, WebP, BMP, SVG |
+| `Document` | Document content | PDF, TXT, CSV, JSON, XML, DOC, DOCX |
+| `Audio` | Audio content | MP3, WAV, OGG |
+| `Video` | Video content | MP4, AVI, MOV |
+
+#### Example
+
+```csharp
+// Image analysis
+var imageFile = FileContent.FromFile("photo.jpg", MediaType.Image);
+
+// Document analysis
+var docFile = FileContent.FromFile("report.pdf", MediaType.Document);
+
+// Audio transcription (future support)
+var audioFile = FileContent.FromFile("recording.mp3", MediaType.Audio);
+
+// Video analysis (future support)
+var videoFile = FileContent.FromFile("clip.mp4", MediaType.Video);
 ```
 
 ---
@@ -634,6 +877,8 @@ builder.Services.AddLLMServices();
 | `LLMRequest` | Class | `LLM.Nexus.Models` | Public |
 | `LLMResponse` | Class | `LLM.Nexus.Models` | Public |
 | `UsageInfo` | Class | `LLM.Nexus.Models` | Public |
+| `FileContent` | Class | `LLM.Nexus.Models` | Public |
+| `MediaType` | Enum | `LLM.Nexus.Models` | Public |
 | `LLMSettings` | Class | `LLM.Nexus.Settings` | Public |
 | `ProviderConfiguration` | Class | `LLM.Nexus.Settings` | Public |
 | `LLMProvider` | Enum | `LLM.Nexus.Settings` | Public |
@@ -650,7 +895,9 @@ LLM.Nexus
 LLM.Nexus.Models
 ├── LLMRequest
 ├── LLMResponse
-└── UsageInfo
+├── UsageInfo
+├── FileContent
+└── MediaType (enum)
 
 LLM.Nexus.Settings
 ├── LLMSettings
@@ -796,14 +1043,33 @@ public class AIAssistant
 
 ### Version 2.1.0
 
-**Google AI SDK Migration**
+**Multimodal Support & Google AI SDK Migration**
 
+- **NEW**: Multimodal support - Send images, documents, and other files to LLMs
+- **NEW**: `FileContent` class for handling files with helper methods (`FromFile`, `FromBytes`, `FromUrl`)
+- **NEW**: `MediaType` enum for specifying file types (Image, Document, Audio, Video)
+- **NEW**: `Files` property on `LLMRequest` for multimodal requests
+- **NEW**: Support for vision-capable models across all providers
 - **BREAKING CHANGE**: Migrated Google provider from `Google.Cloud.AIPlatform.V1` to `Google_GenerativeAI` SDK
 - Simplified Google authentication - now uses API key directly (Google AI Studio)
-- Improved Google provider implementation with cleaner API
+- Improved Google provider implementation with cleaner API and multimodal support
 - Better support for system instructions in Google Gemini models
 - All existing functionality maintained (temperature, max tokens, system messages)
-- All 65 tests passing with new SDK
+- 82 tests passing (added 17 file handling tests)
+
+**New Features:**
+
+Multimodal requests with images:
+```csharp
+var request = new LLMRequest
+{
+    Prompt = "What's in this image?",
+    Files = new List<FileContent>
+    {
+        FileContent.FromFile("photo.jpg", MediaType.Image)
+    }
+};
+```
 
 **Migration Guide:**
 

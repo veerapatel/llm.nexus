@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using LLM.Nexus.Models;
@@ -49,7 +51,46 @@ namespace LLM.Nexus.Providers.OpenAI
                     chatOptions.Temperature = (float)request.Temperature.Value;
                 }
 
-                var messages = new[] { new UserChatMessage(request.Prompt) };
+                // Build message content with files if present
+                List<ChatMessage> messages;
+                if (request.Files != null && request.Files.Count > 0)
+                {
+                    // Multimodal message with files
+                    var contentParts = new List<ChatMessageContentPart>();
+
+                    // Add files first
+                    foreach (var file in request.Files)
+                    {
+                        if (!string.IsNullOrEmpty(file.Url))
+                        {
+                            // Use URL-based content
+                            contentParts.Add(ChatMessageContentPart.CreateImagePart(new Uri(file.Url)));
+                        }
+                        else if (!string.IsNullOrEmpty(file.Data))
+                        {
+                            // Use base64 data
+                            var imageBytes = Convert.FromBase64String(file.Data);
+                            contentParts.Add(ChatMessageContentPart.CreateImagePart(BinaryData.FromBytes(imageBytes), file.MimeType));
+                        }
+                    }
+
+                    // Add text prompt
+                    contentParts.Add(ChatMessageContentPart.CreateTextPart(request.Prompt));
+
+                    messages = new List<ChatMessage> { new UserChatMessage(contentParts) };
+                }
+                else
+                {
+                    // Text-only message
+                    messages = new List<ChatMessage> { new UserChatMessage(request.Prompt) };
+                }
+
+                // Add system message if present
+                if (!string.IsNullOrEmpty(request.SystemMessage))
+                {
+                    messages.Insert(0, new SystemChatMessage(request.SystemMessage));
+                }
+
                 var completion = await _client.CompleteChatAsync(messages, chatOptions, cancellationToken).ConfigureAwait(false);
 
                 var response = new LLMResponse

@@ -3,7 +3,7 @@
 [![NuGet](https://img.shields.io/nuget/v/LLM.Nexus.svg)](https://www.nuget.org/packages/LLM.Nexus)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/LLM.Nexus.svg)](https://www.nuget.org/packages/LLM.Nexus)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-65%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-82%20passed-brightgreen.svg)]()
 [![.NET Standard](https://img.shields.io/badge/.NET%20Standard-2.0-blue.svg)]()
 
 A unified .NET abstraction layer for multiple Large Language Model (LLM) providers. LLM.Nexus simplifies integration with OpenAI, Anthropic, Google, and other LLM services through a common interface, making it easy to switch between providers or support multiple providers in your application simultaneously.
@@ -11,6 +11,7 @@ A unified .NET abstraction layer for multiple Large Language Model (LLM) provide
 ## Features
 
 - **Multi-Provider Support** - OpenAI (GPT), Anthropic (Claude), and Google (Gemini) with extensible architecture
+- **Multimodal Support** - Send images, documents, and other files to vision-capable models
 - **Multiple Providers Simultaneously** - Configure and use multiple providers in the same application
 - **Named Provider Instances** - Create and manage multiple configurations for different use cases
 - **Unified Interface** - Single `ILLMService` interface works across all providers
@@ -20,7 +21,7 @@ A unified .NET abstraction layer for multiple Large Language Model (LLM) provide
 - **Cancellation Support** - All async methods support cancellation tokens
 - **Input Validation** - Built-in request validation with DataAnnotations
 - **Comprehensive Logging** - Structured logging throughout the library
-- **100% Test Coverage** - 65 passing tests covering all scenarios
+- **100% Test Coverage** - 82 passing tests covering all scenarios
 - **.NET Standard 2.0** - Compatible with .NET Framework 4.6.1+ and .NET Core 2.0+
 
 ## Installation
@@ -45,6 +46,7 @@ dotnet add package LLM.Nexus
 - [Usage Examples](#usage-examples)
   - [Simple Usage](#simple-usage)
   - [Advanced Usage with LLMRequest](#advanced-usage-with-llmrequest)
+  - [File and Image Analysis](#file-and-image-analysis)
   - [Cancellation Token Support](#cancellation-token-support)
   - [Accessing Response Metadata](#accessing-response-metadata)
 - [Supported Models](#supported-models)
@@ -443,6 +445,133 @@ public async Task<LLMResponse> GenerateCreativeStoryAsync()
     return await _llmService.GenerateResponseAsync(request);
 }
 ```
+
+### File and Image Analysis
+
+All providers support multimodal requests with images and documents. Use the `FileContent` class to include files in your requests:
+
+#### Analyze an Image from File Path
+
+```csharp
+using LLM.Nexus.Models;
+
+public async Task<string> AnalyzeImageAsync(string imagePath)
+{
+    var request = new LLMRequest
+    {
+        Prompt = "What's in this image? Describe it in detail.",
+        MaxTokens = 500,
+        Files = new List<FileContent>
+        {
+            FileContent.FromFile(imagePath, MediaType.Image)
+        }
+    };
+
+    var response = await _llmService.GenerateResponseAsync(request);
+    return response.Content;
+}
+```
+
+#### Analyze Image from Byte Array (e.g., uploaded files)
+
+```csharp
+public async Task<string> AnalyzeUploadedImageAsync(byte[] imageBytes)
+{
+    var request = new LLMRequest
+    {
+        Prompt = "Describe what you see in this image.",
+        MaxTokens = 300,
+        Files = new List<FileContent>
+        {
+            FileContent.FromBytes(imageBytes, MediaType.Image, "image/jpeg", "upload.jpg")
+        }
+    };
+
+    var response = await _llmService.GenerateResponseAsync(request);
+    return response.Content;
+}
+```
+
+#### Analyze Image from URL (OpenAI only)
+
+```csharp
+public async Task<string> AnalyzeImageFromUrlAsync(string imageUrl)
+{
+    var request = new LLMRequest
+    {
+        Prompt = "What do you see in this image?",
+        Files = new List<FileContent>
+        {
+            FileContent.FromUrl(imageUrl, MediaType.Image, "image/jpeg")
+        }
+    };
+
+    var response = await _llmService.GenerateResponseAsync(request);
+    return response.Content;
+}
+```
+
+#### Compare Multiple Images
+
+```csharp
+public async Task<string> CompareImagesAsync(string image1Path, string image2Path)
+{
+    var request = new LLMRequest
+    {
+        Prompt = "Compare these two images. What are the main differences?",
+        MaxTokens = 500,
+        Files = new List<FileContent>
+        {
+            FileContent.FromFile(image1Path, MediaType.Image),
+            FileContent.FromFile(image2Path, MediaType.Image)
+        }
+    };
+
+    var response = await _llmService.GenerateResponseAsync(request);
+    return response.Content;
+}
+```
+
+#### Analyze Documents (PDFs, etc.)
+
+```csharp
+public async Task<string> AnalyzeDocumentAsync(string pdfPath)
+{
+    var request = new LLMRequest
+    {
+        Prompt = "Summarize the key points in this document.",
+        MaxTokens = 1000,
+        Files = new List<FileContent>
+        {
+            FileContent.FromFile(pdfPath, MediaType.Document)
+        }
+    };
+
+    var response = await _llmService.GenerateResponseAsync(request);
+    return response.Content;
+}
+```
+
+#### Supported File Types
+
+**FileContent Helper Methods:**
+- `FileContent.FromFile(path, mediaType)` - Load from file path (auto-detects MIME type)
+- `FileContent.FromBytes(bytes, mediaType, mimeType, fileName)` - Load from byte array
+- `FileContent.FromUrl(url, mediaType, mimeType)` - Load from URL (OpenAI only)
+
+**MediaType Enum:**
+- `MediaType.Image` - Images (JPEG, PNG, GIF, WebP, BMP, SVG)
+- `MediaType.Document` - Documents (PDF, TXT, CSV, JSON, XML, DOC, DOCX)
+- `MediaType.Audio` - Audio files (MP3, WAV, OGG)
+- `MediaType.Video` - Video files (MP4, AVI, MOV)
+
+**Provider Support:**
+
+| Provider | Image Support | Document Support | URL Support |
+|----------|---------------|------------------|-------------|
+| **OpenAI** | ✅ | Limited | ✅ |
+| **Anthropic** | ✅ | ✅ | ❌ (Base64 only) |
+| **Google** | ✅ | ✅ | ❌ (Base64 only) |
 
 ### Cancellation Token Support
 
@@ -905,8 +1034,8 @@ public class CustomProviderService : ILLMService
 
 ### Test Statistics
 
-- **Total Tests**: 65
-- **Passed**: 65
+- **Total Tests**: 82
+- **Passed**: 82
 - **Failed**: 0
 - **Code Coverage**: 100%
 - **Test Framework**: xUnit
@@ -916,6 +1045,7 @@ public class CustomProviderService : ILLMService
 | Category | Description | Test Count |
 |----------|-------------|------------|
 | Service Tests | Core service functionality, request/response handling | 18 |
+| File Handling Tests | FileContent, multimodal requests, all providers | 17 |
 | Factory Tests | Multi-provider factory, named provider creation | 15 |
 | Configuration Tests | Multi-provider settings validation, configuration binding | 14 |
 | Provider Tests | Provider-specific implementations (OpenAI, Anthropic, Google) | 12 |
@@ -1048,7 +1178,43 @@ public class LLMRequest
     [Range(0.0, 2.0)]
     public double? Temperature { get; set; }
 
+    public List<FileContent> Files { get; set; }
+
     public Dictionary<string, object>? AdditionalParameters { get; set; }
+}
+```
+
+#### `FileContent`
+
+Represents a file or media content to be sent to an LLM.
+
+```csharp
+public class FileContent
+{
+    public MediaType MediaType { get; set; }
+    public string MimeType { get; set; }
+    public string Data { get; set; }  // Base64-encoded
+    public string? FileName { get; set; }
+    public string? Url { get; set; }
+
+    // Helper methods
+    public static FileContent FromFile(string filePath, MediaType mediaType);
+    public static FileContent FromUrl(string url, MediaType mediaType, string mimeType);
+    public static FileContent FromBytes(byte[] data, MediaType mediaType, string mimeType, string? fileName = null);
+}
+```
+
+#### `MediaType`
+
+Supported media types enumeration.
+
+```csharp
+public enum MediaType
+{
+    Image,      // JPEG, PNG, GIF, WebP, etc.
+    Document,   // PDF, TXT, CSV, JSON, etc.
+    Audio,      // MP3, WAV, OGG
+    Video       // MP4, AVI, MOV
 }
 ```
 
@@ -1158,6 +1324,7 @@ builder.Services.AddLLMServices();
 - [x] Multi-provider support (v2.0)
 - [x] Google Gemini support (v2.0)
 - [x] Named provider instances (v2.0)
+- [x] Multimodal support - images and documents (v2.1)
 - [ ] Azure OpenAI support
 - [ ] Streaming response support
 - [ ] Function calling support

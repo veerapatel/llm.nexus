@@ -36,5 +36,10 @@ namespace LLM.Nexus.Models
         /// Gets or sets additional provider-specific parameters (optional).
         /// </summary>
         public Dictionary<string, object> AdditionalParameters { get; set; } = new Dictionary<string, object>();
+
+        /// <summary>
+        /// Gets or sets the list of files/media to include with the request (optional).
+        /// </summary>
+        public List<FileContent> Files { get; set; } = new List<FileContent>();
     }
 }

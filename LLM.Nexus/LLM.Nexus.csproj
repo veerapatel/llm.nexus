@@ -6,7 +6,7 @@
         <Nullable>enable</Nullable>
 
         <PackageId>LLM.Nexus</PackageId>
-        <Version>2.1.0</Version>
+        <Version>2.1.1</Version>
         <Authors>Alexandros Mouratidis</Authors>
         <Company>Alexandros Mouratidis</Company>
 
@@ -27,15 +27,17 @@
         <PublishRepositoryUrl>true</PublishRepositoryUrl>
         <EmbedUntrackedSources>true</EmbedUntrackedSources>
 
-        <PackageReleaseNotes>v2.1.0 - Google AI SDK Migration
-• BREAKING CHANGE: Migrated Google provider from Google.Cloud.AIPlatform.V1 to Google_GenerativeAI SDK
-• Simplified Google authentication - now uses API key directly (Google AI Studio)
-• Improved Google provider implementation with cleaner API
-• Better support for system instructions in Google Gemini models
-• All existing functionality maintained (temperature, max tokens, system messages)
-• All 65 tests passing with new SDK
+        <PackageReleaseNotes>v2.1.1 - Multimodal Support
+• NEW: Multimodal support - Send images, documents, and files to all providers
+• NEW: FileContent class with FromFile, FromBytes, and FromUrl helper methods
+• NEW: MediaType enum for Image, Document, Audio, and Video content
+• NEW: Files property on LLMRequest for vision and document analysis
+• Google provider now supports multimodal requests with images and documents
+• OpenAI and Anthropic providers support multimodal requests (images, documents)
+• 82 tests passing (added 17 file handling tests)
+• All existing functionality maintained
 
-Migration: If using Google provider, ensure you have a Google AI Studio API key (instead of Vertex AI credentials).</PackageReleaseNotes>
+Example: var request = new LLMRequest { Prompt = "What's in this image?", Files = new List&lt;FileContent&gt; { FileContent.FromFile("photo.jpg", MediaType.Image) } };</PackageReleaseNotes>
 
         <PackageIcon>Icon.png</PackageIcon>
     </PropertyGroup>

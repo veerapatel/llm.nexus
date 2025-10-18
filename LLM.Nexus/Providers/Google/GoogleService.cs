@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading;
@@ -75,8 +76,49 @@ namespace LLM.Nexus.Providers.Google
                     model.SystemInstruction = request.SystemMessage;
                 }
 
-                // Generate content
-                var apiResponse = await model.GenerateContentAsync(request.Prompt, cancellationToken).ConfigureAwait(false);
+                // Generate content with files if present
+                GenerateContentResponse apiResponse;
+                if (request.Files != null && request.Files.Count > 0)
+                {
+                    // Multimodal content with files
+                    var parts = new List<Part>();
+
+                    // Add files first
+                    foreach (var file in request.Files)
+                    {
+                        if (!string.IsNullOrEmpty(file.Data))
+                        {
+                            // Add inline data (base64)
+                            var blob = new Blob
+                            {
+                                MimeType = file.MimeType,
+                                Data = file.Data
+                            };
+
+                            var imagePart = new Part
+                            {
+                                InlineData = blob
+                            };
+                            parts.Add(imagePart);
+                            _logger.LogInformation("Added file to request: {FileName} ({MimeType})", file.FileName ?? "unknown", file.MimeType);
+                        }
+                        else if (!string.IsNullOrEmpty(file.Url))
+                        {
+                            _logger.LogWarning("Google provider currently supports base64 data, not URLs. File will be skipped: {Url}", file.Url);
+                        }
+                    }
+
+                    // Add text prompt
+                    parts.Add(new Part { Text = request.Prompt });
+
+                    // Generate content with multimodal parts
+                    apiResponse = await model.GenerateContentAsync(parts.ToArray(), cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    // Text-only content
+                    apiResponse = await model.GenerateContentAsync(request.Prompt, cancellationToken).ConfigureAwait(false);
+                }
 
                 var responseText = apiResponse.Text() ?? string.Empty;
 

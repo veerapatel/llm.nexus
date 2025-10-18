@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Anthropic.SDK;
+using Anthropic.SDK.Constants;
 using Anthropic.SDK.Messaging;
 using LLM.Nexus.Models;
 using LLM.Nexus.Settings;
@@ -42,7 +44,48 @@ namespace LLM.Nexus.Providers.Anthropic
             {
                 _logger.LogInformation("Generating Anthropic response for prompt with {PromptLength} characters", request.Prompt.Length);
 
-                var messages = new List<Message> { new Message(RoleType.User, request.Prompt) };
+                // Build message content with files if present
+                List<Message> messages;
+                if (request.Files != null && request.Files.Count > 0)
+                {
+                    // Multimodal message with files
+                    var contentList = new List<ContentBase>();
+
+                    // Add files first
+                    foreach (var file in request.Files)
+                    {
+                        if (!string.IsNullOrEmpty(file.Data))
+                        {
+                            // Anthropic requires base64 data without URL support for images
+                            var imageContent = new ImageContent
+                            {
+                                Source = new ImageSource
+                                {
+                                    MediaType = file.MimeType,
+                                    Data = file.Data
+                                }
+                            };
+                            contentList.Add(imageContent);
+                        }
+                    }
+
+                    // Add text prompt
+                    contentList.Add(new TextContent { Text = request.Prompt });
+
+                    messages = new List<Message>
+                    {
+                        new Message
+                        {
+                            Role = RoleType.User,
+                            Content = contentList
+                        }
+                    };
+                }
+                else
+                {
+                    // Text-only message
+                    messages = new List<Message> { new Message(RoleType.User, request.Prompt) };
+                }
 
                 var parameters = new MessageParameters()
                 {
