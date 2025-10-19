@@ -443,7 +443,7 @@ var fileContent = FileContent.FromBytes(imageBytes, MediaType.Image, "image/jpeg
 
 ##### FromUrl
 
-Creates a `FileContent` from a URL (OpenAI only).
+Creates a `FileContent` from a URL (all providers supported).
 
 ```csharp
 public static FileContent FromUrl(
@@ -468,6 +468,11 @@ var fileContent = FileContent.FromUrl(
     "image/jpeg"
 );
 ```
+
+**Provider-Specific Behavior:**
+- **OpenAI**: URLs are passed directly to the API (native support)
+- **Anthropic**: URLs are automatically downloaded and converted to base64
+- **Google**: URLs are automatically downloaded and converted to base64
 
 #### Supported MIME Types
 
@@ -502,9 +507,9 @@ var fileContent = FileContent.FromUrl(
 
 | Provider | Image Support | Document Support | URL Support | Notes |
 |----------|---------------|------------------|-------------|-------|
-| **OpenAI** | ✅ | Limited | ✅ | Supports image URLs and base64 |
-| **Anthropic** | ✅ | ✅ | ❌ | Base64 only, no URLs |
-| **Google** | ✅ | ✅ | ❌ | Base64 only, no URLs |
+| **OpenAI** | ✅ | Limited | ✅ Native | Supports image URLs and base64 |
+| **Anthropic** | ✅ | ✅ | ✅ Auto-download | URLs automatically downloaded and converted to base64 |
+| **Google** | ✅ | ✅ | ✅ Auto-download | URLs automatically downloaded and converted to base64 |
 
 #### Complete Example
 

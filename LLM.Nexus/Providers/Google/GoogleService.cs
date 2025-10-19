@@ -86,7 +86,31 @@ namespace LLM.Nexus.Providers.Google
                     // Add files first
                     foreach (var file in request.Files)
                     {
-                        if (!string.IsNullOrEmpty(file.Data))
+                        if (!string.IsNullOrEmpty(file.Url))
+                        {
+                            // Use URL-based content by downloading and converting to base64
+                            // Note: Google's SDK FileData.FileUri is for Google Cloud Storage URIs (gs://)
+                            // For HTTP/HTTPS URLs, we need to download and use InlineData
+                            _logger.LogInformation("Downloading image from URL for Google: {Url}", file.Url);
+
+                            using var httpClient = new System.Net.Http.HttpClient();
+                            var imageBytes = await httpClient.GetByteArrayAsync(file.Url).ConfigureAwait(false);
+                            var base64Data = Convert.ToBase64String(imageBytes);
+
+                            var blob = new Blob
+                            {
+                                MimeType = file.MimeType,
+                                Data = base64Data
+                            };
+
+                            var imagePart = new Part
+                            {
+                                InlineData = blob
+                            };
+                            parts.Add(imagePart);
+                            _logger.LogInformation("Successfully added URL-based image: {FileName} ({MimeType})", file.FileName ?? "unknown", file.MimeType);
+                        }
+                        else if (!string.IsNullOrEmpty(file.Data))
                         {
                             // Add inline data (base64)
                             var blob = new Blob
@@ -101,10 +125,6 @@ namespace LLM.Nexus.Providers.Google
                             };
                             parts.Add(imagePart);
                             _logger.LogInformation("Added file to request: {FileName} ({MimeType})", file.FileName ?? "unknown", file.MimeType);
-                        }
-                        else if (!string.IsNullOrEmpty(file.Url))
-                        {
-                            _logger.LogWarning("Google provider currently supports base64 data, not URLs. File will be skipped: {Url}", file.Url);
                         }
                     }
 

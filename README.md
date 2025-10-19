@@ -492,7 +492,7 @@ public async Task<string> AnalyzeUploadedImageAsync(byte[] imageBytes)
 }
 ```
 
-#### Analyze Image from URL (OpenAI only)
+#### Analyze Image from URL
 
 ```csharp
 public async Task<string> AnalyzeImageFromUrlAsync(string imageUrl)
@@ -510,6 +510,8 @@ public async Task<string> AnalyzeImageFromUrlAsync(string imageUrl)
     return response.Content;
 }
 ```
+
+**Note:** All providers now support URL-based images. For Anthropic and Google, images are automatically downloaded and converted to base64, while OpenAI uses native URL support.
 
 #### Compare Multiple Images
 
@@ -557,7 +559,7 @@ public async Task<string> AnalyzeDocumentAsync(string pdfPath)
 **FileContent Helper Methods:**
 - `FileContent.FromFile(path, mediaType)` - Load from file path (auto-detects MIME type)
 - `FileContent.FromBytes(bytes, mediaType, mimeType, fileName)` - Load from byte array
-- `FileContent.FromUrl(url, mediaType, mimeType)` - Load from URL (OpenAI only)
+- `FileContent.FromUrl(url, mediaType, mimeType)` - Load from URL (all providers supported)
 
 **MediaType Enum:**
 - `MediaType.Image` - Images (JPEG, PNG, GIF, WebP, BMP, SVG)
@@ -569,9 +571,14 @@ public async Task<string> AnalyzeDocumentAsync(string pdfPath)
 
 | Provider | Image Support | Document Support | URL Support |
 |----------|---------------|------------------|-------------|
-| **OpenAI** | ✅ | Limited | ✅ |
-| **Anthropic** | ✅ | ✅ | ❌ (Base64 only) |
-| **Google** | ✅ | ✅ | ❌ (Base64 only) |
+| **OpenAI** | ✅ | Limited | ✅ Native |
+| **Anthropic** | ✅ | ✅ | ✅ Auto-download |
+| **Google** | ✅ | ✅ | ✅ Auto-download |
+
+**URL Support Notes:**
+- **OpenAI**: Uses native URL support - URLs are passed directly to the API
+- **Anthropic**: Automatically downloads images from URLs and converts to base64
+- **Google**: Automatically downloads images from URLs and converts to base64
 
 ### Cancellation Token Support
 

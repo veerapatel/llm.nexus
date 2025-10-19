@@ -54,9 +54,29 @@ namespace LLM.Nexus.Providers.Anthropic
                     // Add files first
                     foreach (var file in request.Files)
                     {
-                        if (!string.IsNullOrEmpty(file.Data))
+                        if (!string.IsNullOrEmpty(file.Url))
                         {
-                            // Anthropic requires base64 data without URL support for images
+                            // Download image from URL and convert to base64
+                            _logger.LogInformation("Downloading image from URL for Anthropic: {Url}", file.Url);
+
+                            using var httpClient = new System.Net.Http.HttpClient();
+                            var imageBytes = await httpClient.GetByteArrayAsync(file.Url).ConfigureAwait(false);
+                            var base64Data = Convert.ToBase64String(imageBytes);
+
+                            var imageContent = new ImageContent
+                            {
+                                Source = new ImageSource
+                                {
+                                    MediaType = file.MimeType,
+                                    Data = base64Data
+                                }
+                            };
+                            contentList.Add(imageContent);
+                            _logger.LogInformation("Successfully added URL-based image: {FileName} ({MimeType})", file.FileName ?? "unknown", file.MimeType);
+                        }
+                        else if (!string.IsNullOrEmpty(file.Data))
+                        {
+                            // Use base64 data directly
                             var imageContent = new ImageContent
                             {
                                 Source = new ImageSource
